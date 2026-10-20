@@ -6,6 +6,11 @@ Renderer downloads for **moOde 10.3.6, Trixie ARM64**:
 Download the `.deb` for the renderer you need. The combined archive also includes
 standalone executables, build manifests, logs and per-renderer checksums.
 
+These baseline ARM64 packages use the same executable across Pi models supported
+by the moOde 10.3.6 profile. The manifest records the reference model `3b+` used by
+CI; it does not select CPU tuning or restrict the download to that model. Physical
+validation status remains model-specific.
+
 **Sources and licenses:** retain the matching `*_sources.tar.gz` and
 `*_notices.tar.gz` companions when redistributing. The combined archive includes
 them too. Sources contain the pinned upstream code, locked Rust dependencies,

@@ -36,6 +36,12 @@ wslc run --rm `
 
 Set `--moode-version` to your installed release. Release tags such as `r1020`, `r1020fix`, and `r1036` are also accepted. These inputs select the architecture, source commit, dependencies, and package version; they do not build the latest upstream release. See the [release profiles](docs/profiles.md) for the full list. Unsupported releases and models fail before compilation.
 
+Supported Pi models share the same baseline ARM64 executable for a given profile
+and renderer. `--pi-model` controls compatibility checks, validation status and
+manifest provenance; it does not select model-specific CPU tuning. Release
+downloads therefore use one ARM64 package per renderer/profile. A manifest naming
+the CI reference model `3b+` does not restrict that package to the Pi 3B+.
+
 Choose a renderer with `--renderer` (default: `librespot`):
 
 | Renderer | Packages built | moOde versions |

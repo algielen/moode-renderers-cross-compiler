@@ -108,6 +108,13 @@ exports passed checks and locked Cargo resolution offline. The 10.3.6 bundles al
 passed QEMU installation/informational checks. This does not replace a complete
 post-change compatibility-matrix run; the requested GitHub trial is profile-only.
 
+The [10.2.0 trial](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/39510276390)
+passed all jobs: 60 unit tests, separate Spotify/AirPlay builds, clean ARM64 runtime
+checks, offline sources, aggregate coverage and release file binding. Only Spotify
+downloads were published in v0.1.2. Downloaded release assets also matched the
+approval, source pin and regenerated license report before publication. This
+single-profile run is not a full-matrix performance or compatibility measurement.
+
 ## Original CI validation
 
 The [v0.1.1 verification job](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/39461501856) passed on 2026-10-20: CLI/failure tests, cache reuse, all 27 profile/renderer builds, and installation plus informational CLI execution of every distinct bundle in clean ARM64 Debian Trixie. QEMU/binfmt was used for these runtime checks. That particular runtime test could not run locally because this `wslc` host lacks ARM binfmt emulation. The minimal runtime image explicitly points apt at its bootstrapped CA bundle for verified HTTPS access to Debian Snapshot.

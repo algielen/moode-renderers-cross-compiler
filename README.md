@@ -8,7 +8,7 @@ Cross-compile **Spotify Connect, AirPlay, and Qobuz Connect** for moOde on **Tri
 
 Repository code uses the [MIT license](LICENSE). Renderer binaries and the compiler image retain third-party licenses. The [release license audit](docs/licensing.md) identifies outstanding source and notice requirements for v0.1.1; it is not yet cleared as a complete compliant distribution.
 
-The first corrected release, v0.1.2, targets **Spotify for moOde 10.2.0**, with
+The first corrected release, [v0.1.2](https://github.com/algielen/moode-renderers-cross-compiler/releases/tag/v0.1.2), provides **Spotify for moOde 10.2.0**, with
 matching source and notice archives. Later releases can advance through the
 profiles starting with 10.2.1. AirPlay downloads are deferred for licensing
 clarification. The local compiler continues to support all listed profiles.

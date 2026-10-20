@@ -92,6 +92,11 @@ before 10.3.4. AirPlay publication
 is deferred, its question stays local and unsent, and the compiler remains locally
 built. The workflow allowlist follows the selected profile and excludes AirPlay;
 the first release therefore contains librespot only.
+The [v0.1.2 release](https://github.com/algielen/moode-renderers-cross-compiler/releases/tag/v0.1.2)
+is now public with matching sources, notices, checksums and license-selection
+report. Its downloaded assets were checked against the successful CI approval
+before publication. This scoped release does not clear AirPlay or the previously
+distributed compiler image.
 Historical qbzd is not a download in this release. The deleted v0.1.1 stays deleted.
 Future scope does not erase source/notice obligations for previously distributed
 artifacts. Compiler-image publication still requires a fresh notice/source delivery

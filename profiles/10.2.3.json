@@ -21,13 +21,48 @@
     "cm4",
     "cm5"
   ],
-  "validated_models": [],
-  "renderer": "librespot",
-  "source_url": "https://github.com/librespot-org/librespot.git",
-  "source_tag": "v0.8.0",
-  "source_commit": "d36f9f1907e8cc9d68a93f8ebc6b627b1bf7267d",
-  "package_version": "0.8.0-1moode1",
-  "features": [
-    "alsa-backend"
-  ]
+  "renderers": {
+    "librespot": {
+      "validated_models": [],
+      "packages": [
+        {
+          "name": "librespot",
+          "package_version": "0.8.0-1moode1",
+          "source_url": "https://github.com/librespot-org/librespot.git",
+          "source_tag": "v0.8.0",
+          "source_commit": "d36f9f1907e8cc9d68a93f8ebc6b627b1bf7267d",
+          "build_system": "cargo-deb",
+          "db_type": "spotify-connect",
+          "cargo_package": "librespot",
+          "workspace": ".",
+          "features": [
+            "alsa-backend"
+          ]
+        }
+      ]
+    },
+    "airplay": {
+      "validated_models": [],
+      "packages": [
+        {
+          "name": "shairport-sync",
+          "package_version": "5.0.4-1moode1",
+          "source_url": "https://github.com/mikebrady/shairport-sync.git",
+          "source_tag": "5.0.4",
+          "source_commit": "eed1b9f0b99c4ba995f009ac2b234dc99a0ee630",
+          "build_system": "shairport",
+          "db_type": "airplay"
+        },
+        {
+          "name": "nqptp",
+          "package_version": "1.2.6-1moode1",
+          "source_url": "https://github.com/mikebrady/nqptp.git",
+          "source_tag": "1.2.6",
+          "source_commit": "c17af00b40a454596ca43e1855c9aa13529ebc1f",
+          "build_system": "nqptp",
+          "db_type": "nqptp"
+        }
+      ]
+    }
+  }
 }

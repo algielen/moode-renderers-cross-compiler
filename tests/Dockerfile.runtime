@@ -3,4 +3,6 @@ FROM --platform=linux/amd64 rust:1.90.0-slim-trixie@sha256:7fa728f3678acf5980d5d
 FROM --platform=linux/arm64 debian:trixie-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f
 COPY --from=certificates /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY tests/runtime.sh /runtime.sh
+COPY tests/runtime.py /runtime.py
+COPY compiler /opt/compiler
 ENTRYPOINT ["sh", "/runtime.sh"]

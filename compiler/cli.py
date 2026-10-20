@@ -32,13 +32,16 @@ def profiles():
 
 
 def select_profile(version, model, renderer="librespot"):
+    renderer = "librespot" if renderer == "spotify" else renderer
     for profile in profiles():
         if version in [profile["moode_version"], *profile["aliases"]]:
-            if renderer != profile["renderer"]:
-                raise ValueError(f"Unsupported renderer: {renderer}")
+            if renderer not in profile["renderers"]:
+                raise ValueError(f"Renderer {renderer} is unavailable in moOde {profile['moode_version']}. "
+                                 f"Available: {', '.join(profile['renderers'])}")
             if model not in profile["models"]:
                 raise ValueError(f"Unsupported Pi model: {model}. See list-profiles.")
-            return profile
+            return {**{key: value for key, value in profile.items() if key != "renderers"},
+                    "renderer": renderer, **profile["renderers"][renderer]}
     raise ValueError(f"Unsupported moOde release: {version}. See list-profiles.")
 
 
@@ -51,8 +54,10 @@ def capture(command, **kwargs):
     return subprocess.check_output(list(map(str, command)), text=True, **kwargs).strip()
 
 
-def check_help(help_text):
-    missing = [option for option in REQUIRED_OPTIONS if option not in help_text]
+def check_help(help_text, renderer="librespot"):
+    options = REQUIRED_OPTIONS if renderer == "librespot" else (
+        ["--name", "--configfile", "--output"] if renderer == "airplay" else ["run", "watch", "settings", "qconnect"])
+    missing = [option for option in options if option not in help_text]
     if missing:
         raise ValueError("Binary lacks moOde CLI options: " + ", ".join(missing))
 
@@ -64,8 +69,8 @@ def build(args):
     # Open before doing expensive work; catches permissions and read-only mounts.
     with tempfile.TemporaryFile(dir=out):
         pass
-    package = f"librespot_{profile['package_version']}_arm64.deb"
-    artifact_names = [package, "librespot", "manifest.json", "SHA256SUMS", "build.log"]
+    package_names = [f"{package['name']}_{package['package_version']}_arm64.deb" for package in profile["packages"]]
+    artifact_names = package_names + [package["name"] for package in profile["packages"]] + ["manifest.json", "SHA256SUMS", "build.log"]
     occupied = [name for name in artifact_names if (out / name).exists()]
     if occupied:
         raise ValueError("Output already contains artifacts; use an empty directory: " + ", ".join(occupied))
@@ -81,13 +86,12 @@ def build(args):
         except BlockingIOError:
             raise ValueError("This cache is already in use by another build") from None
         work = Path(work_dir)
-        source = cache / "sources" / profile["source_commit"]
         stage = work / "artifacts"
         stage.mkdir()
         log_path = out / "build.failed.log"
         with log_path.open("w") as log:
             command = [sys.executable, __file__, "_compile", "--profile", profile["moode_version"],
-                       "--model", args.pi_model, "--source", str(source), "--stage", str(stage),
+                       "--renderer", profile["renderer"], "--model", args.pi_model, "--stage", str(stage),
                        "--jobs", str(args.jobs)]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             for line in process.stdout:
@@ -110,71 +114,25 @@ def build(args):
                     (export / name).replace(out / name)
             (export / "SHA256SUMS").replace(out / "SHA256SUMS")
         log_path.unlink()
-    print(f"Built {out / package}")
+    print("Built " + ", ".join(str(out / name) for name in package_names))
 
 
 def compile_renderer(args):
-    profile = select_profile(args.profile, args.model)
-    source, stage = Path(args.source), Path(args.stage)
-    env = os.environ.copy()
-    env["CARGO_BUILD_JOBS"] = str(args.jobs)
-    # Cache dependencies as well as compiled objects in the optional /cache volume.
-    for directory in ["registry", "git"]:
-        dest = Path("/cache") / directory
-        dest.mkdir(exist_ok=True)
-        link = Path("/usr/local/cargo") / directory
-        if not link.exists():
-            link.symlink_to(dest, target_is_directory=True)
-    if not (source / ".git").exists():
-        source.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix=".checkout-", dir=source.parent) as checkout:
-            repo = Path(checkout) / "source"
-            run(["git", "init", "--quiet", repo])
-            run(["git", "-C", repo, "remote", "add", "origin", profile["source_url"]])
-            run(["git", "-C", repo, "fetch", "--depth=1", "origin", profile["source_commit"]])
-            run(["git", "-C", repo, "checkout", "--detach", "FETCH_HEAD"])
-            repo.rename(source)
-    commit = capture(["git", "-C", source, "rev-parse", "HEAD"])
-    if commit != profile["source_commit"]:
-        raise ValueError("Source commit mismatch")
-    if capture(["git", "-C", source, "status", "--porcelain", "--untracked-files=all"]):
-        raise ValueError("Cached sources have been modified; use a fresh cache volume")
-    env["SOURCE_DATE_EPOCH"] = capture(["git", "-C", source, "show", "-s", "--format=%ct", "HEAD"])
-    lock_hash = hashlib.sha256((source / "Cargo.lock").read_bytes()).hexdigest()
-    run(["cargo", "build", "--release", "--locked", "--target", profile["target"],
-         "--features", ",".join(profile["features"])], cwd=source, env=env)
-    package_path = stage / f"librespot_{profile['package_version']}_arm64.deb"
-    run(["cargo", "deb", "--no-build", "--target", profile["target"],
-         "--deb-version", profile["package_version"], "--output", package_path], cwd=source, env=env)
-    # Inspect the actual packaged binary (cargo-deb strips debug information).
-    extracted = stage.parent / "packaged"
-    run(["dpkg-deb", "-x", package_path, extracted])
-    shutil.copy2(extracted / "usr/bin/librespot", stage / "librespot")
-    binary = stage / "librespot"
-    elf = capture(["aarch64-linux-gnu-readelf", "-h", binary])
-    if "AArch64" not in elf:
-        raise ValueError("Expected an AArch64 ELF binary")
-    loader = capture(["aarch64-linux-gnu-readelf", "-l", binary])
-    if "/lib/ld-linux-aarch64.so.1" not in loader:
-        raise ValueError("Unexpected ARM64 interpreter")
-    dynamic = capture(["aarch64-linux-gnu-readelf", "-d", binary])
-    version = capture(["dpkg-deb", "-f", package_path, "Version"])
-    arch = capture(["dpkg-deb", "-f", package_path, "Architecture"])
-    depends = capture(["dpkg-deb", "-f", package_path, "Depends"])
-    if (version, arch) != (profile["package_version"], "arm64") or not depends:
-        raise ValueError("Incorrect Debian package metadata")
+    import recipes
+
+    profile = select_profile(args.profile, args.model, args.renderer)
+    stage = Path(args.stage)
+    built = [recipes.build_package(package, profile, stage, args.jobs) for package in profile["packages"]]
     manifest = {
-        "profile": profile, "pi_model": args.model, "source_commit": commit,
+        "schema_version": 2, "profile": profile, "pi_model": args.model, "packages": built,
         "compiler_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        "cargo_lock_sha256": lock_hash, "rustc": capture(["rustc", "--version"]),
-        "cargo": capture(["cargo", "--version"]), "cargo_deb": capture(["cargo", "deb", "--version"]),
-        "debian_snapshot": env["DEBIAN_SNAPSHOT"], "rustflags": env["RUSTFLAGS"],
-        "default_features": True, "features": profile["features"],
-        "depends": depends, "dynamic_libraries": re.findall(r"Shared library: \[(.*?)\]", dynamic),
+        "recipes_sha256": hashlib.sha256(Path(recipes.__file__).read_bytes()).hexdigest(),
+        "rustc": capture(["rustc", "--version"]), "cargo": capture(["cargo", "--version"]),
+        "cargo_deb": capture(["cargo", "deb", "--version"]),
+        "debian_snapshot": os.environ["DEBIAN_SNAPSHOT"], "rustflags": os.environ["RUSTFLAGS"],
         "toolchain_packages": (Path(__file__).parent / "toolchain-packages.tsv").read_text().splitlines(),
     }
     (stage / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"Verified ARM64 package; dependencies: {depends}")
 
 
 REMOTE_INSPECT = r"""set -eu
@@ -182,7 +140,7 @@ printf 'MODEL='; tr -d '\000' < /proc/device-tree/model; printf '\n'
 printf 'ARCH='; dpkg --print-architecture
 printf 'OS='; . /etc/os-release; printf '%s\n' "$VERSION_CODENAME"
 printf 'MOODE='; moodeutl --mooderel
-printf 'RENDERER_VERSION='; sqlite3 /var/local/www/db/moode-sqlite3.db "SELECT version FROM cfg_plugin WHERE component='renderer' AND type='spotify-connect';"
+sqlite3 /var/local/www/db/moode-sqlite3.db "SELECT 'PLUGIN_' || type || '=' || version FROM cfg_plugin WHERE component IN ('renderer','system');"
 dpkg-query -W -f='LIBRARY=${binary:Package} ${Version}\n' libc6 libasound2t64 libssl3t64
 """
 
@@ -227,15 +185,16 @@ def inspect_pi(args):
         output = ssh_command(client, REMOTE_INSPECT)
         print(output, end="")
         if args.moode_version:
-            profile = select_profile(args.moode_version, args.pi_model)
+            profile = select_profile(args.moode_version, args.pi_model, args.renderer)
             values = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
             if values.get("ARCH") != profile["architecture"] or values.get("OS") != profile["distribution"]:
                 raise ValueError("Pi architecture/OS does not match the selected profile")
             # moodeutl includes a release date after the version on some images.
             if profile["moode_version"] not in values.get("MOODE", "").split():
                 raise ValueError("Pi moOde release does not match the selected profile")
-            if values.get("RENDERER_VERSION") != profile["package_version"]:
-                raise ValueError("Pi expects a different renderer package version")
+            for package in profile["packages"]:
+                if values.get("PLUGIN_" + package["db_type"]) != package["package_version"]:
+                    raise ValueError(f"Pi expects a different {package['name']} package version")
             model_patterns = {
                 "3b+": "Raspberry Pi 3 Model B Plus", "3b": "Raspberry Pi 3 Model B Rev",
                 "3a+": "Raspberry Pi 3 Model A Plus", "4b": "Raspberry Pi 4 Model B",
@@ -252,15 +211,21 @@ def inspect_pi(args):
             remote_dir = ssh_command(client, "mktemp -d /tmp/moode-cross-check.XXXXXXXX").strip()
             try:
                 with client.open_sftp() as sftp:
-                    sftp.put(args.binary, remote_dir + "/librespot")
-                    sftp.chmod(remote_dir + "/librespot", 0o755)
-                binary = shlex.quote(remote_dir + "/librespot")
-                print(ssh_command(client, f"{binary} --version"), end="")
-                help_text = ssh_command(client, f"{binary} --help")
-                check_help(help_text)
+                    sftp.put(args.binary, remote_dir + "/renderer")
+                    sftp.chmod(remote_dir + "/renderer", 0o755)
+                binary = shlex.quote(remote_dir + "/renderer")
+                version_arg = "-V" if args.renderer == "airplay" else "--version"
+                print(ssh_command(client, f"{binary} {version_arg}"), end="")
+                timing_daemon = args.renderer == "airplay" and Path(args.binary).name == "nqptp"
+                help_text = ssh_command(client, f"{binary} {'-h' if timing_daemon else '--help'}")
+                if timing_daemon:
+                    if "-V" not in help_text or "-h" not in help_text:
+                        raise ValueError("NQPTP lacks its informational CLI flags")
+                else:
+                    check_help(help_text, "librespot" if args.renderer == "spotify" else args.renderer)
                 print("Binary runs on the Pi and supports moOde's renderer CLI options.")
             finally:
-                ssh_command(client, f"rm -f -- {shlex.quote(remote_dir + '/librespot')}; rmdir -- {shlex.quote(remote_dir)}")
+                ssh_command(client, f"rm -f -- {shlex.quote(remote_dir + '/renderer')}; rmdir -- {shlex.quote(remote_dir)}")
 
 
 def positive_int(value):
@@ -275,19 +240,20 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list-profiles", help="List supported releases and model names")
     build_parser = commands.add_parser("build", help="Cross-compile and export a renderer package")
-    build_parser.add_argument("--renderer", choices=["librespot"], default="librespot")
+    build_parser.add_argument("--renderer", choices=["librespot", "spotify", "airplay", "qobuz"], default="librespot")
     build_parser.add_argument("--pi-model", required=True)
     build_parser.add_argument("--moode-version", required=True)
     build_parser.add_argument("--output", default="/out")
     build_parser.add_argument("--jobs", type=positive_int, default=positive_int(os.environ.get("CARGO_BUILD_JOBS", "2")))
     inspect_parser = commands.add_parser("inspect-pi", help="Read-only SSH compatibility and optional binary check")
+    inspect_parser.add_argument("--renderer", choices=["librespot", "spotify", "airplay", "qobuz"], default="librespot")
     inspect_parser.add_argument("--known-hosts", default="/cache/known_hosts")
     inspect_parser.add_argument("--accept-new-host-key", action="store_true", help="Trust an unknown host on first use; changed keys are rejected")
     inspect_parser.add_argument("--moode-version")
     inspect_parser.add_argument("--pi-model")
     inspect_parser.add_argument("--binary", help="Upload binary temporarily and run --version/--help")
     internal = commands.add_parser("_compile", help="Internal build worker")
-    for argument in ["profile", "model", "source", "stage"]:
+    for argument in ["profile", "model", "stage", "renderer"]:
         internal.add_argument("--" + argument, required=True)
     internal.add_argument("--jobs", type=positive_int, required=True)
     args = parser.parse_args()
@@ -297,9 +263,12 @@ def main():
         if args.command == "list-profiles":
             for profile in profiles():
                 print(f"{profile['moode_version']} ({', '.join(profile['aliases'])}): "
-                      f"{profile['renderer']} {profile['package_version']}, {profile['distribution']} ARM64")
+                      f"{profile['distribution']} ARM64")
                 print("  Pi models: " + ", ".join(profile["models"]))
-                print("  Validated models: " + (", ".join(profile["validated_models"]) or "pending"))
+                for name, renderer in profile["renderers"].items():
+                    packages = ", ".join(f"{p['name']} {p['package_version']}" for p in renderer["packages"])
+                    print(f"  {name}: {packages}")
+                    print("    Validated models: " + (", ".join(renderer["validated_models"]) or "pending"))
         elif args.command == "build":
             build(args)
         elif args.command == "_compile":

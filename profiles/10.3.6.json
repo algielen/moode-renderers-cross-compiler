@@ -1,16 +1,92 @@
 {
   "moode_version": "10.3.6",
-  "aliases": ["r1036"],
+  "aliases": [
+    "r1036"
+  ],
   "moode_commit": "1226c6a66204dd58380846ef26e7763a94ed86d1",
   "distribution": "trixie",
   "architecture": "arm64",
   "target": "aarch64-unknown-linux-gnu",
-  "models": ["3b", "3b+", "3a+", "4b", "400", "5", "500", "zero2w", "cm3", "cm3+", "cm4", "cm5"],
-  "validated_models": ["3b+"],
-  "renderer": "librespot",
-  "source_url": "https://github.com/librespot-org/librespot.git",
-  "source_tag": "v0.8.0",
-  "source_commit": "d36f9f1907e8cc9d68a93f8ebc6b627b1bf7267d",
-  "package_version": "0.8.0-1moode1",
-  "features": ["alsa-backend"]
+  "models": [
+    "3b",
+    "3b+",
+    "3a+",
+    "4b",
+    "400",
+    "5",
+    "500",
+    "zero2w",
+    "cm3",
+    "cm3+",
+    "cm4",
+    "cm5"
+  ],
+  "renderers": {
+    "librespot": {
+      "validated_models": [
+        "3b+"
+      ],
+      "packages": [
+        {
+          "name": "librespot",
+          "package_version": "0.8.0-1moode1",
+          "source_url": "https://github.com/librespot-org/librespot.git",
+          "source_tag": "v0.8.0",
+          "source_commit": "d36f9f1907e8cc9d68a93f8ebc6b627b1bf7267d",
+          "build_system": "cargo-deb",
+          "db_type": "spotify-connect",
+          "cargo_package": "librespot",
+          "workspace": ".",
+          "features": [
+            "alsa-backend"
+          ]
+        }
+      ]
+    },
+    "airplay": {
+      "validated_models": [
+        "3b+"
+      ],
+      "packages": [
+        {
+          "name": "shairport-sync",
+          "package_version": "5.5.2-1moode1",
+          "source_url": "https://github.com/mikebrady/shairport-sync.git",
+          "source_tag": "5.5.2",
+          "source_commit": "7bad231c18368dbd26f298577f6210e36e4b0797",
+          "build_system": "shairport",
+          "db_type": "airplay"
+        },
+        {
+          "name": "nqptp",
+          "package_version": "1.2.6-1moode1",
+          "source_url": "https://github.com/mikebrady/nqptp.git",
+          "source_tag": "1.2.6",
+          "source_commit": "c17af00b40a454596ca43e1855c9aa13529ebc1f",
+          "build_system": "nqptp",
+          "db_type": "nqptp"
+        }
+      ]
+    },
+    "qobuz": {
+      "validated_models": [
+        "3b+"
+      ],
+      "packages": [
+        {
+          "name": "pibuz",
+          "package_version": "2.5.1-1moode1",
+          "source_url": "https://github.com/PhilipVinc/pibuz.git",
+          "source_tag": "v2.5.1",
+          "source_commit": "465e21b2006718dc31999bda54fe5b60948acc9d",
+          "build_system": "cargo",
+          "db_type": "qobuz-connect",
+          "cargo_package": "pibuz",
+          "workspace": ".",
+          "features": [],
+          "rust_toolchain": "1.94.0"
+        }
+      ]
+    }
+  }
 }

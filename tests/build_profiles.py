@@ -15,17 +15,19 @@ spec.loader.exec_module(cli)
 reference_hashes = {}
 for profile in cli.profiles():
     version = profile["moode_version"]
-    output = Path("/out") / version
-    subprocess.run([sys.executable, str(ROOT / "compiler/cli.py"), "build",
-                    "--pi-model", "3b+", "--moode-version", version,
-                    "--output", str(output)], check=True)
-    manifest = json.loads((output / "manifest.json").read_text())
-    if manifest["profile"] != profile:
-        raise RuntimeError(f"Build manifest does not match profile {version}")
-    subprocess.run(["sha256sum", "-c", "SHA256SUMS"], cwd=output, check=True)
-    # Profiles sharing source, flags and platform should export the same binary.
-    recipe = tuple(profile[key] for key in ["source_commit", "target", "package_version"]) + tuple(profile["features"])
-    digest = hashlib.sha256((output / "librespot").read_bytes()).hexdigest()
-    if reference_hashes.setdefault(recipe, digest) != digest:
-        raise RuntimeError(f"Binary differs for equivalent recipe in {version}")
-    print(f"Verified {version} ({', '.join(profile['aliases'])})", flush=True)
+    for renderer in profile["renderers"]:
+        selected = cli.select_profile(version, "3b+", renderer)
+        output = Path("/out") / version / renderer
+        subprocess.run([sys.executable, str(ROOT / "compiler/cli.py"), "build",
+                        "--pi-model", "3b+", "--moode-version", version, "--renderer", renderer,
+                        "--output", str(output)], check=True)
+        manifest = json.loads((output / "manifest.json").read_text())
+        if manifest["profile"] != selected:
+            raise RuntimeError(f"Build manifest does not match profile {version}/{renderer}")
+        subprocess.run(["sha256sum", "-c", "SHA256SUMS"], cwd=output, check=True)
+        for package in selected["packages"]:
+            recipe = (selected["target"], selected["distribution"], json.dumps(package, sort_keys=True))
+            digest = hashlib.sha256((output / package["name"]).read_bytes()).hexdigest()
+            if reference_hashes.setdefault(recipe, digest) != digest:
+                raise RuntimeError(f"Binary differs for equivalent recipe in {version}/{renderer}")
+        print(f"Verified {version}/{renderer} ({', '.join(profile['aliases'])})", flush=True)

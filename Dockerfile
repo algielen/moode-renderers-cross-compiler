@@ -32,6 +32,23 @@ RUN test "$(dpkg --print-architecture)" = amd64 \
     && cargo install cargo-deb --version "$CARGO_DEB_VERSION" --locked \
     && rm -rf /usr/local/cargo/registry /usr/local/cargo/git
 
+# AirPlay uses autotools/Debian packaging; the older Qobuz daemon also links JACK.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       autoconf automake libtool debhelper dh-autoreconf devscripts \
+       g++-aarch64-linux-gnu cmake clang libclang-dev xmltoman xxd \
+       libavahi-client-dev:arm64 libavcodec-dev:arm64 libavformat-dev:arm64 \
+       libavutil-dev:arm64 libswresample-dev:arm64 libconfig-dev:arm64 \
+       libpopt-dev:arm64 libsoxr-dev:arm64 libplist-dev:arm64 libplist-utils \
+       libsodium-dev:arm64 libmosquitto-dev:arm64 libgcrypt20-dev:arm64 uuid-dev:arm64 \
+       libglib2.0-dev:arm64 libglib2.0-dev-bin:amd64 \
+       libjack-jackd2-dev:arm64 libdbus-1-dev:arm64 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Qobuz uses Arc::new_zeroed_slice, stabilized after the librespot toolchain.
+RUN rustup set auto-self-update disable \
+    && rustup toolchain install 1.94.0 --profile minimal --target aarch64-unknown-linux-gnu
+
 COPY compiler /opt/compiler
 COPY profiles /opt/profiles
 COPY tests /opt/tests

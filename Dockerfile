@@ -29,6 +29,7 @@ RUN test "$(dpkg --print-architecture)" = amd64 \
        pkg-config dpkg-dev python3 python3-paramiko file xz-utils \
     && rm -rf /var/lib/apt/lists/* \
     && rustup target add aarch64-unknown-linux-gnu \
+    && rustup component add rust-src \
     && cargo install cargo-deb --version "$CARGO_DEB_VERSION" --locked \
     && rm -rf /usr/local/cargo/registry /usr/local/cargo/git
 
@@ -47,9 +48,10 @@ RUN apt-get update \
 
 # Qobuz uses Arc::new_zeroed_slice, stabilized after the librespot toolchain.
 RUN rustup set auto-self-update disable \
-    && rustup toolchain install 1.94.0 --profile minimal --target aarch64-unknown-linux-gnu
+    && rustup toolchain install 1.94.0 --profile minimal --component rust-src --target aarch64-unknown-linux-gnu
 
 COPY compiler /opt/compiler
+COPY Dockerfile LICENSE /opt/
 COPY LICENSE /opt/compiler/LICENSE
 COPY docs/licensing.md /opt/compiler/THIRD-PARTY.md
 COPY profiles /opt/profiles

@@ -16,7 +16,7 @@ The cached pinned sources for all four supported shairport versions contain `LIC
 
 ## Evidence from v0.1.1
 
-The [published release](https://github.com/algielen/moode-renderers-cross-compiler/releases/tag/v0.1.1) has four Debian packages and one binary bundle, with no corresponding-source or third-party-notice asset. The downloaded bundle's SHA-256 is `abc5c568b979201781eb6143f3efc3fff331f753535bed966442ca98022fe490`. Its manifests match the four pinned commits above. GitHub's automatically generated source archive contains this compiler repository, not the upstream renderers or their dependencies.
+The original [published release](https://github.com/algielen/moode-renderers-cross-compiler/releases/tag/v0.1.1) had four Debian packages and one binary bundle, with no corresponding-source or third-party-notice asset. The downloaded bundle's SHA-256 is `abc5c568b979201781eb6143f3efc3fff331f753535bed966442ca98022fe490`. Its manifests match the four pinned commits above. GitHub's automatically generated source archive contains this compiler repository, not the upstream renderers or their dependencies.
 
 Package inspection of locally built matching recipes found:
 
@@ -29,6 +29,79 @@ Scanning cached ARM64 release depfiles and the referenced crate manifests found 
 The GHCR image also redistributes Debian utilities/libraries, GCC, Rust toolchains and cargo-deb. The local matching compiler contains, for example, GCC 14.2.0-19cross1 and Git 2.47.3-0+deb13u1. Debian copyright files and Rust license files are retained, but there is no complete image source/notice delivery process. The pinned base digest and Debian Snapshot URL identify inputs; they do not by themselves discharge every source-delivery obligation.
 
 ## Required distribution work
+
+### Verified remediation materials
+
+Local remediation checks on 2026-10-20 reproduced all four original v0.1.1
+executables byte for byte. Their source commits, Rust lockfile hashes/toolchain
+versions where applicable, and Debian toolchain inventories agree. The original
+tag's CLI and recipe hashes also match the published manifests. Repackaged Debian
+packages carry the collected notices; the prepared standalone bundle includes
+source/notice companions. Executable bytes are unchanged; package/archive checksums
+change when adding materials.
+
+The inspected published compiler digest is
+`sha256:55fe51c1dd9769f186a76336f9880d5f776c67d4a7b8f4658278084e55252336`.
+Its 524 installed Debian binary package records match the source inventory. The
+supplement includes 350 Debian source package/version inputs, both Rust source
+distributions, and locked cargo-deb/rustup sources and vendor closures. All 36,163
+material hashes passed verification. Rustup source matches the installed binary's
+commit; cargo-deb's source matches the registry checksum. The split source archive's
+internal source manifest matches SHA-256
+`9da8f614b417f04d4870cf84a2f1a9239a62d799e4bd4ae2900b5ca482385bdb`.
+
+Prepared supplement assets and provenance records are under ignored
+`dist/licensing-v0.1.1-supplements/`; repackaged binaries, bundle and draft release
+notes are under `dist/licensing-v0.1.1-release/`. These materials have **not been
+published**: the GitHub release endpoint returned 404 at the publication check.
+Collection and reproducibility evidence do not substitute for reviewing actual
+license terms, selected alternatives and bundled code. The public distribution is
+not declared cleared.
+
+### Remediation implemented in the working tree
+
+New builds collect a source archive and notice archive per package. The source archive
+contains the pristine pinned renderer, the complete locked Cargo vendor closure where
+applicable, Rust library sources/notices, dependency metadata and our build/package
+scripts. Shairport's exact Debian packaging archive is exported alongside it. Debian
+packages retain existing notices and gain `/usr/share/doc/<name>/redistribution`, with
+source acquisition instructions. Standalone bundles contain the same companion archives.
+Manifests record archive checksums; `tests/check_redistribution.py` verifies them before
+the workflow prepares a draft release. The Cargo inventory deliberately includes
+unused platforms and host tools; it is not an exact linked-code SBOM.
+
+The workflow now creates drafts and does not publish compiler images. These safeguards
+do **not** publish the prepared v0.1.1 supplements or establish clearance. Before making
+a draft public, review license choices, bundled native code and source completeness for
+the actual linked executable, including system static/runtime code. Filename-based
+notice collection is a starting inventory; review inline notices too. Compiler image
+source delivery remains a separate prerequisite to restoring GHCR publication.
+
+The image-source collector can run inside the exact compiler image being audited:
+
+```powershell
+New-Item -ItemType Directory -Force dist/image-sources | Out-Null
+wslc run --rm -v "${PWD}/dist/image-sources:/out" --entrypoint python3 `
+  moode-cross:local /opt/compiler/image_sources.py
+```
+
+It collects installed Debian source versions, including `Built-Using` and
+`Static-Built-Using`, checks downloaded source files against Snapshot content hashes
+and `.dsc` SHA-256s, and retains Rust source distributions, Rust toolchain notices,
+and the locked cargo-deb/rustup source closures. `SOURCE-MANIFEST.json` is the completion
+marker. Interrupted Debian downloads can be revalidated with `--resume`. Record the
+exact inspected OCI digest separately; a source manifest alone does not bind materials
+to a published image. Retain the source package filenames when archiving/uploading
+these materials and provide them with equivalent access alongside the image.
+
+To repair v0.1.1, preserve the original downloaded binaries and manifests, match their
+source commits, lockfile hashes, compiler versions and build options, then prepare
+source/notice supplements against that evidence. Compare dependency inventories with
+the original build before claiming correspondence; a new build alone cannot attest to
+an old binary. Upload reviewed supplements alongside the existing downloads and update
+the release notes with source acquisition instructions. Any replacement package must
+be identified as rebuilt, with new checksums. Existing GHCR tags require their own
+matching image inventories, source delivery and notices before clearance.
 
 1. For each release, collect exact source, license texts, copyright/NOTICE files and dependency inventories from the actual builds. Include vendored code and selected license alternatives. Preserve notices inside Debian packages and alongside standalone binaries.
 2. Supply nqptp's complete corresponding source and our build/package scripts with equivalent access from the release. Do not substitute a link to an upstream homepage or GitHub's compiler-only source archive. GPLv2 section 3 governs binary/source delivery; see the [FSF distribution FAQ](https://www.gnu.org/licenses/gpl-faq.html#DistributeWithSourceOnInternet).

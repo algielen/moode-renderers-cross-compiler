@@ -9,3 +9,9 @@
 !profiles/**
 !tests/
 !tests/**
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*
+**/.idea/
+**/.vscode/

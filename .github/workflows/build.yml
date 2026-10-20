@@ -15,9 +15,6 @@ on:
 permissions:
   contents: read
 
-env:
-  IMAGE: ghcr.io/algielen/moode-renderers-cross-compiler
-
 jobs:
   plan:
     runs-on: ubuntu-24.04
@@ -90,6 +87,10 @@ jobs:
         run: |
           docker build -f tests/Dockerfile.runtime -t moode-cross:runtime .
           docker run --rm --platform linux/arm64 -v "$PWD/profile-dist:/artifacts:ro" moode-cross:runtime
+      - name: Verify exported sources offline
+        run: |
+          docker run --rm --network none -v "$PWD/profile-dist:/artifacts:ro" \
+            --entrypoint python3 moode-cross:test /opt/tests/check_source_exports.py /artifacts
       - uses: actions/upload-artifact@v4
         if: startsWith(github.ref, 'refs/tags/v')
         with:
@@ -104,44 +105,26 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
-      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: renderers-moode-10.3.6-arm64
           path: dist
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Container release tags
-        id: tags
+      # Compiler-image publication is suspended until its separate source audit is complete.
+      - name: Check release tag
         env:
           VERSION: ${{ github.ref_name }}
         run: |
           if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo 'Release tags must have the form v1.2.3'; exit 1
           fi
-          echo "major=${VERSION%%.*}" >> "$GITHUB_OUTPUT"
-      - name: Publish compiler
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64
-          tags: |
-            ${{ env.IMAGE }}:${{ github.ref_name }}
-            ${{ env.IMAGE }}:${{ steps.tags.outputs.major }}
-            ${{ env.IMAGE }}:latest
-          cache-from: type=gha
-          labels: org.opencontainers.image.revision=${{ github.sha }}
-      - name: Publish GitHub release
+      - name: Verify redistribution materials
+        run: python3 tests/check_redistribution.py dist
+      - name: Prepare draft for licensing review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ github.ref_name }}
         run: |
           tar -czf moode-10.3.6-renderers-arm64.tar.gz -C dist .
-          gh release create "$VERSION" dist/*/*.deb moode-10.3.6-renderers-arm64.tar.gz --verify-tag --generate-notes --title "$VERSION"
+          gh release create "$VERSION" dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz dist/*/*_debian.tar.xz moode-10.3.6-renderers-arm64.tar.gz --draft --verify-tag --generate-notes --title "$VERSION"

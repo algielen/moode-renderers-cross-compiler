@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location("cli", ROOT / "compiler/cli.py")
 cli = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cli)
+from check_redistribution import check as check_redistribution
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--versions-json", help="JSON array of moOde versions; omitted builds all profiles")
@@ -39,6 +40,7 @@ for profile in cli.profiles():
         if manifest["profile"] != selected:
             raise RuntimeError(f"Build manifest does not match profile {version}/{renderer}")
         subprocess.run(["sha256sum", "-c", "SHA256SUMS"], cwd=output, check=True)
+        check_redistribution(output)
         for package in selected["packages"]:
             recipe = (selected["target"], selected["distribution"], json.dumps(package, sort_keys=True))
             digest = hashlib.sha256((output / package["name"]).read_bytes()).hexdigest()

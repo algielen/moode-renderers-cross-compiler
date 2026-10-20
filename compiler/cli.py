@@ -71,6 +71,11 @@ def build(args):
         pass
     package_names = [f"{package['name']}_{package['package_version']}_arm64.deb" for package in profile["packages"]]
     artifact_names = package_names + [package["name"] for package in profile["packages"]] + ["manifest.json", "SHA256SUMS", "build.log"]
+    for package in profile["packages"]:
+        prefix = f"{package['name']}_{package['package_version']}"
+        artifact_names += [prefix + "_sources.tar.gz", prefix + "_notices.tar.gz"]
+        if package["build_system"] == "shairport":
+            artifact_names.append(prefix + "_debian.tar.xz")
     occupied = [name for name in artifact_names if (out / name).exists()]
     if occupied:
         raise ValueError("Output already contains artifacts; use an empty directory: " + ", ".join(occupied))
@@ -102,7 +107,8 @@ def build(args):
         shutil.copy2(log_path, stage / "build.log")
         entries = []
         for path in sorted(stage.iterdir()):
-            entries.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
+            with path.open("rb") as stream:
+                entries.append(f"{hashlib.file_digest(stream, 'sha256').hexdigest()}  {path.name}\n")
         (stage / "SHA256SUMS").write_text("".join(entries))
         # Finish copying before publishing; SHA256SUMS is the completion marker.
         with tempfile.TemporaryDirectory(prefix=".export-", dir=out) as export_dir:

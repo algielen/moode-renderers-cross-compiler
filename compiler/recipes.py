@@ -211,6 +211,8 @@ def inspect_package(package, stage, work):
 
 
 def build_package(package, profile, stage, jobs):
+    import compliance
+
     source = checkout(package)
     env = build_environment(source, package, jobs)
     with tempfile.TemporaryDirectory(prefix="moode-package-") as directory:
@@ -219,5 +221,13 @@ def build_package(package, profile, stage, jobs):
             details = build_cargo(source, package, profile, stage, work, env)
         else:
             details = build_native(source, package, stage, work, env, jobs)
+        notices, materials = compliance.collect(source, package, profile, stage, work, env)
+        if package["build_system"] == "shairport":
+            # Ship the exact packaging input, including its copyright notices.
+            packaging = stage / f"{package['name']}_{package['package_version']}_debian.tar.xz"
+            packaging.write_bytes(debian_airplay())
+            materials["debian_packaging_archive"] = packaging.name
+        compliance.add_package_notices(stage / package_filename(package), notices, package["name"], work, env)
+        details["redistribution"] = materials
         details.update(inspect_package(package, stage, work))
     return {**package, **details}

@@ -8,23 +8,25 @@ Cross-compile **Spotify Connect, AirPlay, and Qobuz Connect** for moOde on **Tri
 
 Repository code uses the [MIT license](LICENSE). Renderer binaries and the compiler image retain third-party licenses. The [release license audit](docs/licensing.md) identifies outstanding source and notice requirements for v0.1.1; it is not yet cleared as a complete compliant distribution.
 
-Use the published compiler image:
+Build the compiler locally from this checkout while public image remediation is pending:
 
 ```bash
+docker build -t moode-cross:local .
 mkdir -p dist
 docker run --rm \
   -v "$PWD/dist:/out" \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
+  moode-cross:local \
   build --pi-model 3b+ --moode-version 10.3.6
 ```
 
 PowerShell with `wslc` (substitute `docker` if preferred):
 
 ```powershell
+wslc build -t moode-cross:local .
 New-Item -ItemType Directory -Force dist | Out-Null
 wslc run --rm `
   -v "${PWD}/dist:/out" `
-  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 `
+  moode-cross:local `
   build --pi-model 3b+ --moode-version 10.3.6
 ```
 
@@ -43,7 +45,7 @@ For example, build AirPlay into a separate output directory:
 ```bash
 mkdir -p dist-airplay
 docker run --rm -v "$PWD/dist-airplay:/out" -v moode-build-cache:/cache \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
+  moode-cross:local \
   build --renderer airplay --pi-model 3b+ --moode-version 10.3.6
 ```
 
@@ -53,6 +55,7 @@ Output in `dist/`:
 
 - `librespot_0.8.0-1moode1_arm64.deb`: installable package.
 - `librespot`: standalone ARM64 executable.
+- `*_sources.tar.gz`, `*_notices.tar.gz`: companion sources and redistribution notices.
 - `manifest.json`, `SHA256SUMS`, `build.log`: build provenance, checksums, and log.
 
 Other renderers export their own package(s) and standalone binaries with the same manifest/log/checksum files. AirPlay always exports both packages required by moOde.
@@ -63,7 +66,7 @@ For faster rebuilds, add a persistent cache:
 
 ```bash
 docker run --rm -v "$PWD/dist:/out" -v moode-build-cache:/cache \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
+  moode-cross:local \
   build --pi-model 3b+ --moode-version 10.3.6 --jobs 4
 ```
 
@@ -112,7 +115,7 @@ Copy `.env.example` to `.env` and set the four `RASPBERRY_*` values. Keep this f
 
 ```bash
 docker run --rm --env-file .env -v moode-ssh:/cache \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
+  moode-cross:local \
   inspect-pi --accept-new-host-key --pi-model 3b+ --moode-version 10.3.6
 ```
 
@@ -122,7 +125,7 @@ To check your compiled executable, also mount `dist` read-only and add `--binary
 
 ```bash
 docker run --rm --env-file .env -v moode-ssh:/cache -v "$PWD/dist:/artifacts:ro" \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
+  moode-cross:local \
   inspect-pi --pi-model 3b+ --moode-version 10.3.6 --binary /artifacts/librespot
 ```
 
@@ -133,7 +136,7 @@ Inspection reads system information. Binary checking uploads to a temporary dire
 ## Supported targets and validation
 
 ```bash
-docker run --rm ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 list-profiles
+docker run --rm moode-cross:local list-profiles
 ```
 
 Profiles use generic ARM64 instructions and accept Pi `3b`, `3b+`, `3a+`, `4b`, `400`, `5`, `500`, `zero2w`, `cm3`, `cm3+`, `cm4`, and `cm5`, **running the specified 64-bit moOde image**. Model selection checks compatibility; it does not tune the binary for that CPU. ARM32 and releases outside the profile list are unsupported.
@@ -170,8 +173,8 @@ Pull requests and branch pushes compile only added or modified profiles and chec
 
 Pull requests compare with their merge base; branch pushes compare with the previous commit from the push event. Release tags and manual runs compare with the preceding release tag. Without a baseline, CI checks all profiles. Releases also build the default 10.3.6 profile to supply their download bundle. To force all profiles, run **Build and release → Run workflow → Verify every profile** in GitHub Actions.
 
-Push a tag such as `v0.1.1` to run the release workflow. Once checks pass, it publishes `ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1`, `:v0`, and `:latest`. The GitHub release includes the four `.deb` files for moOde 10.3.6 and a bundle with separate renderer folders containing binaries, manifests, logs, and checksums. Build historical versions using the matching profile.
+Push a release tag to build and prepare a **draft** GitHub release for licensing review. Each renderer includes companion source and notice archives; notices are also installed under `/usr/share/doc/<name>/redistribution` in its Debian package. The standalone bundle includes these archives, manifests, logs and checksums. Source archives retain pinned upstream sources, locked Cargo dependencies (including other platforms and build dependencies), Rust library sources and build/package scripts. Keep the source and notice archives with binaries when redistributing.
 
-The repository must permit GitHub Actions to publish packages and releases. After the first publication, set the GHCR package visibility to **Public** in its package settings. Exact release tags or image digests give stable references; `v0` and `latest` move with releases.
+Automatic public releases and GHCR publication are suspended pending the [licensing review](docs/licensing.md). Verified v0.1.1 source/notice supplements are prepared locally; the former public release is currently unavailable. Material integrity checks do not establish license clearance; review the actual linked components, bundled code and notices before publishing a draft. Build historical versions using the matching profile.
 
 Releases before 10.2.0 and custom source overrides are unsupported. Add future renderers as separate recipes and compatibility profiles.

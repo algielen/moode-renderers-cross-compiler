@@ -37,6 +37,26 @@ Host: AMD Ryzen 7 5800X3D, 8 cores / 16 logical processors; Windows PowerShell w
 
 The AirPlay wall-clock measurement was taken on 2026-10-20 with `--renderer airplay --moode-version 10.3.6 --pi-model 3b+ --jobs 4`. Its exit code was zero, and the temporary cache volume was removed afterward. Raw timing/log artifacts are under ignored `dist/timings/`. The Cargo timings come from the corresponding completed build logs. Do not interpret them as whole-command measurements, include compiler-image setup in them, or compare these examples as a controlled benchmark across renderers.
 
-## CI-only validation
+## Licensing remediation validation (2026-10-20)
+
+The local compiler image with source/notice export passed 29 unit tests, all 27
+profile/renderer builds, archive/manifest checksum checks and binary agreement for
+equivalent recipes. Exported sources for all eight distinct component versions were
+checked; all three Cargo applications resolved their exported lockfiles/vendor trees
+offline with an empty Cargo home and networking disabled. Every distinct renderer
+bundle installed and passed informational version/help and dynamic-library checks in
+a disposable compiler container using `qemu-aarch64`, with service startup disabled.
+No physical Pi changes were made for this work. Workflow `actionlint` passed.
+
+All four original v0.1.1 executables matched the rebuilt executables byte for byte.
+The original published compiler image's Debian inventory matched the collected source
+inputs, all 36,163 material hashes verified, and the original tag's build-script hashes
+matched the published manifests. The updated image collector's cargo-deb and pinned
+rustup source export paths also passed locked offline metadata resolution.
+These checks establish correspondence and integrity, not blanket license clearance.
+Ignored logs/materials are under `dist/licensing-*`; see [licensing.md](licensing.md)
+for delivery status and outstanding review.
+
+## Original CI validation
 
 The [v0.1.1 verification job](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/39461501856) passed on 2026-10-20: CLI/failure tests, cache reuse, all 27 profile/renderer builds, and installation plus informational CLI execution of every distinct bundle in clean ARM64 Debian Trixie. QEMU/binfmt was used for these runtime checks. That particular runtime test could not run locally because this `wslc` host lacks ARM binfmt emulation. The minimal runtime image explicitly points apt at its bootstrapped CA bundle for verified HTTPS access to Debian Snapshot.

@@ -39,4 +39,4 @@ The AirPlay wall-clock measurement was taken on 2026-10-20 with `--renderer airp
 
 ## CI-only validation
 
-The release workflow additionally checks installation and informational CLI execution in a clean ARM64 Debian Trixie container. That particular test could not run locally because this `wslc` host lacks ARM binfmt emulation. Its runtime image built successfully; the full workflow still needs its first GitHub run. GHCR publishing and GitHub release creation are configured but have not been exercised.
+The [v0.1.1 verification job](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/39461501856) passed on 2026-10-20: CLI/failure tests, cache reuse, all 27 profile/renderer builds, and installation plus informational CLI execution of every distinct bundle in clean ARM64 Debian Trixie. QEMU/binfmt was used for these runtime checks. That particular runtime test could not run locally because this `wslc` host lacks ARM binfmt emulation. The minimal runtime image explicitly points apt at its bootstrapped CA bundle for verified HTTPS access to Debian Snapshot.

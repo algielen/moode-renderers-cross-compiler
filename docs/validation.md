@@ -17,7 +17,11 @@ Validated locally on 2026-10-20 using Windows PowerShell and `wslc` 3.0.3.0:
 
 The Pi provided libc 2.41, ALSA 1.2.14, and OpenSSL 3.5.4. Runtime dependencies are derived per package and recorded in each schema-2 manifest. Librespot requires ALSA/libc/OpenSSL; pibuz requires ALSA/libc/libgcc. AirPlay additionally links its selected Avahi, FFmpeg, crypto, metadata and messaging libraries; older qbzd also links JACK.
 
-No package was installed on the physical Pi, no renderer settings were changed, and no Spotify discovery or audio playback test was performed. Other listed Pi models are compatible targets but have not been tested on hardware.
+With the user's authorization on 2026-10-20, the physical Pi was upgraded using the cross-built AirPlay packages and `sudo moodeutl --installpkg airplay`: shairport-sync 4.3.7-1moode1 to 5.5.2-1moode1, and nqptp 1.2.4-1moode1 to 1.2.6-1moode1. Artifact checksums passed before upload. The database and shairport configuration were backed up on the Pi before installation. moOde's installer reset AirPlay configuration to its defaults. Both packages reported `install ok installed`, `dpkg --audit` was empty, and informational version checks passed again after a confirmed reboot. AirPlay was initially left disabled after installation, matching its pre-install state.
+
+AirPlay installation and startup validation **passed**. After the user enabled AirPlay, shairport-sync and nqptp ran successfully; TCP 7000 and UDP 319/320 were listening, and Avahi advertised both `_airplay._tcp` and `_raop._tcp` as Moode AirPlay. No startup errors appeared in the service journals, and `/var/log/moode_shairport-sync.log` was empty. moOde launches shairport-sync directly, so its inactive systemd unit does not indicate a failure. The user subsequently stopped the service. Sender connection, audio decoding, synchronization and playback remain untested because no Apple sender was available.
+
+No Spotify or Qobuz package was installed on the physical Pi. Other listed Pi models are compatible targets but have not been tested on hardware.
 
 ## Build-time observations
 

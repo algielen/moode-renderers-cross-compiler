@@ -43,6 +43,12 @@ def select(paths, available, full=False, release=False, profile_only=False, rele
     return {"versions": sorted(versions), "build": bool(versions), "full": full}
 
 
+def write_outputs(plan, output):
+    for key, value in plan.items():
+        encoded = value if isinstance(value, str) else json.dumps(value)
+        output.write(f"{key}={encoded}\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--event", default=os.environ.get("GITHUB_EVENT_PATH"), required=False)
@@ -68,8 +74,7 @@ def main():
     print(json.dumps({"base": base, **plan}), flush=True)
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-            for key, value in plan.items():
-                output.write(f"{key}={json.dumps(value)}\n")
+            write_outputs(plan, output)
 
 
 if __name__ == "__main__":

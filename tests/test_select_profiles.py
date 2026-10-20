@@ -1,4 +1,6 @@
 import importlib.util
+import io
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -12,6 +14,17 @@ spec.loader.exec_module(planner)
 
 class SelectionTests(unittest.TestCase):
     versions = ["10.3.5", "10.3.6", "10.3.7"]
+
+    def test_github_outputs_preserve_plain_profile_and_json_structures(self):
+        output = io.StringIO()
+        plan = {"release_profile": "10.2.0", "profile_only": True,
+                "versions": ["10.2.0"], "matrix": {"include": [{"renderer": "librespot", "versions": ["10.2.0"]}]}}
+        planner.write_outputs(plan, output)
+        values = dict(line.split("=", 1) for line in output.getvalue().splitlines())
+        self.assertEqual(values["release_profile"], "10.2.0")
+        self.assertEqual(values["profile_only"], "true")
+        self.assertEqual(json.loads(values["versions"]), plan["versions"])
+        self.assertEqual(json.loads(values["matrix"]), plan["matrix"])
 
     def test_new_and_modified_profiles_only(self):
         plan = planner.select(["profiles/10.3.7.json", "tests/test_cli.py", "README.md"], self.versions)

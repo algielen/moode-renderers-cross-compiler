@@ -41,7 +41,8 @@ jobs:
     needs: plan
     if: needs.plan.outputs.build == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # Source/notice exports are part of verification; a cold full matrix exceeds one hour.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3

@@ -164,7 +164,9 @@ Run the CLI tests inside the compiler:
 docker run --rm --entrypoint python3 moode-cross:local -m unittest discover -s /opt/tests -v
 ```
 
-Pull requests and branch pushes build every supported release/renderer combination, check cache reuse, and install each distinct package bundle inside a disposable ARM64 Trixie container. QEMU is used only for runtime tests; compilation uses native AMD64 tools.
+Pull requests and branch pushes compile only added or modified profiles and check their distinct package bundles in disposable ARM64 Trixie. Documentation-only changes skip compilation. Lightweight CLI/profile tests always run. Shared compiler, Dockerfile, workflow or build/runtime test changes trigger the full profile matrix and cache reuse check. QEMU is used only for runtime tests; compilation uses native AMD64 tools.
+
+Pull requests compare with their merge base; branch pushes compare with the previous commit from the push event. Release tags and manual runs compare with the preceding release tag. Without a baseline, CI checks all profiles. Releases also build the default 10.3.6 profile to supply their download bundle. To force all profiles, run **Build and release → Run workflow → Verify every profile** in GitHub Actions.
 
 Push a tag such as `v0.1.1` to run the release workflow. Once checks pass, it publishes `ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1`, `:v0`, and `:latest`. The GitHub release includes the four `.deb` files for moOde 10.3.6 and a bundle with separate renderer folders containing binaries, manifests, logs, and checksums. Build historical versions using the matching profile.
 

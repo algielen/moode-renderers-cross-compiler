@@ -1,6 +1,7 @@
 """Cross-build every profile using one cache; check equivalent recipes agree."""
 
 import hashlib
+import argparse
 import importlib.util
 import json
 from pathlib import Path
@@ -12,9 +13,22 @@ spec = importlib.util.spec_from_file_location("cli", ROOT / "compiler/cli.py")
 cli = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cli)
 
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--versions-json", help="JSON array of moOde versions; omitted builds all profiles")
+args = parser.parse_args()
+versions = json.loads(args.versions_json) if args.versions_json is not None else None
+if versions is not None:
+    if not isinstance(versions, list) or any(not isinstance(v, str) for v in versions):
+        parser.error("--versions-json must be a JSON array of version strings")
+    unknown = set(versions) - {p["moode_version"] for p in cli.profiles()}
+    if unknown:
+        parser.error(f"Unknown versions: {sorted(unknown)}")
+
 reference_hashes = {}
 for profile in cli.profiles():
     version = profile["moode_version"]
+    if versions is not None and version not in versions:
+        continue
     for renderer in profile["renderers"]:
         selected = cli.select_profile(version, "3b+", renderer)
         output = Path("/out") / version / renderer

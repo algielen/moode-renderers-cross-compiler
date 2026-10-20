@@ -17,6 +17,7 @@ Build moOde's on-demand renderer packages on an AMD64 workstation for a Raspberr
 - `compiler/recipes.py`: Rust/native cross-builds, Debian packaging and ELF/dependency checks.
 - `Dockerfile`: pinned compiler image, Debian snapshot, toolchains and target development libraries.
 - `tests/`: profile/failure tests, full build matrix and disposable-container installation checks.
+- `tests/select_profiles.py`: CI selection of profiles using the event's Git baseline.
 - `docs/profiles.md`: release audit and source links. `docs/validation.md`: measured validation and its limits.
 - `.github/workflows/build.yml`: CI matrix runner, default release artifacts and GHCR publishing.
 
@@ -55,15 +56,17 @@ wslc run --rm --entrypoint python3 moode-cross:local -m unittest discover -s /op
 wslc run --rm moode-cross:local list-profiles
 ```
 
-Build all available release/renderer combinations into a **new, empty** output directory. Use another directory name for a subsequent run; the builder deliberately refuses to overwrite successful artifacts.
+For a profile-only addition or correction, build the affected versions into a **new, empty** output directory. Use another directory name for a subsequent run; the builder deliberately refuses to overwrite successful artifacts.
 
 ```powershell
 New-Item -ItemType Directory -Force dist/profile-check | Out-Null
 wslc run --rm -v "${PWD}/dist/profile-check:/out" -v moode-build-cache:/cache `
-  --entrypoint python3 moode-cross:local /opt/tests/build_profiles.py
+  --entrypoint python3 moode-cross:local /opt/tests/build_profiles.py --versions-json '["10.3.6"]'
 ```
 
-This checks manifests, checksums and binary agreement for identical recipes. Verify each changed recipe's ARM64 ELF/interpreter, Debian name/version, runtime dependencies and package assets. Exercise cache reuse when changing cache/build logic. Keep sources pristine and failed builds free of success artifacts, including failure of the second AirPlay component.
+Replace the version array with the added/modified versions. Omit `--versions-json` for all profiles; use the full matrix after shared compiler/toolchain or build/runtime test changes. This checks manifests, checksums and binary agreement for identical recipes within the selected builds. Verify each changed recipe's ARM64 ELF/interpreter, Debian name/version, runtime dependencies and package assets. Exercise cache reuse when changing cache/build logic. Keep sources pristine and failed builds free of success artifacts, including failure of the second AirPlay component.
+
+CI always runs lightweight CLI/profile tests. Pull requests compare with their merge base, branch pushes with the push event's previous commit, and release tags/manual runs with the preceding release tag. Only added/modified profiles compile, unless shared build/test/workflow files changed, no baseline exists, or the manual **Verify every profile** input is checked. Profile assertion edits in `tests/test_cli.py` alone do not force the full matrix. Releases additionally build the default download profile (currently 10.3.6); update this in `tests/select_profiles.py` when changing release artifact paths in the workflow.
 
 The CI workflow builds `tests/Dockerfile.runtime` and runs every distinct package bundle in clean ARM64 Trixie with QEMU/binfmt support. Local `wslc` may lack ARM binfmt. Its alternative is a disposable compiler container running `tests/runtime.py --emulator qemu-aarch64` against the mounted artifacts; disable service startup there as in `tests/runtime.sh`. Do not install target libraries or emulation infrastructure on the workstation or Pi to run these checks.
 

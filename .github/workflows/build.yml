@@ -6,6 +6,11 @@ on:
     branches: [main, master]
     tags: ['v[0-9]*']
   workflow_dispatch:
+    inputs:
+      full:
+        description: Verify every profile
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,7 +19,30 @@ env:
   IMAGE: ghcr.io/algielen/moode-renderers-cross-compiler
 
 jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      versions: ${{ steps.profiles.outputs.versions }}
+      build: ${{ steps.profiles.outputs.build }}
+      full: ${{ steps.profiles.outputs.full }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check CLI and profile selection
+        run: python3 -m unittest discover -s tests -v
+      - name: Select profiles to verify
+        id: profiles
+        env:
+          FULL: ${{ inputs.full || false }}
+        run: |
+          args=()
+          if [ "$FULL" = true ]; then args+=(--full); fi
+          python3 tests/select_profiles.py "${args[@]}"
+
   verify:
+    needs: plan
+    if: needs.plan.outputs.build == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -40,6 +68,7 @@ jobs:
             echo 'Expected read-only output to fail'; exit 1
           fi
       - name: Cross-build and verify cache reuse
+        if: needs.plan.outputs.full == 'true'
         run: |
           mkdir -p dist cached-dist
           docker volume create moode-build-cache
@@ -50,16 +79,19 @@ jobs:
             echo 'Cargo did not reuse the compiled cache'; exit 1
           fi
           cd dist && sha256sum -c SHA256SUMS
-      - name: Build every supported release profile
+      - name: Build selected release profiles
+        env:
+          VERSIONS: ${{ needs.plan.outputs.versions }}
         run: |
           mkdir -p profile-dist
           docker run --rm -v "$PWD/profile-dist:/out" -v moode-build-cache:/cache \
-            --entrypoint python3 moode-cross:test /opt/tests/build_profiles.py
+            --entrypoint python3 moode-cross:test /opt/tests/build_profiles.py --versions-json "$VERSIONS"
       - name: Install and check in clean ARM64 Trixie
         run: |
           docker build -f tests/Dockerfile.runtime -t moode-cross:runtime .
           docker run --rm --platform linux/arm64 -v "$PWD/profile-dist:/artifacts:ro" moode-cross:runtime
       - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/v')
         with:
           name: renderers-moode-10.3.6-arm64
           path: profile-dist/10.3.6/

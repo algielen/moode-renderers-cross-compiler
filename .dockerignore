@@ -1,0 +1,9 @@
+**
+!Dockerfile
+!compiler/
+!compiler/**
+!profiles/
+!profiles/**
+!tests/
+!tests/**
+

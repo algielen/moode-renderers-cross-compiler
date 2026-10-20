@@ -1,0 +1,108 @@
+name: Build and release
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/algielen/moode-renderers-cross-compiler
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Build compiler
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: moode-cross:test
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Check CLI and failure handling
+        run: |
+          docker run --rm --entrypoint python3 moode-cross:test -m unittest discover -s /opt/tests -v
+          docker run --rm moode-cross:test list-profiles
+          if docker run --rm --read-only --tmpfs /tmp moode-cross:test build --pi-model 3b+ --moode-version 10.3.6; then
+            echo 'Expected read-only output to fail'; exit 1
+          fi
+      - name: Cross-build and verify cache reuse
+        run: |
+          mkdir -p dist cached-dist
+          docker volume create moode-build-cache
+          docker run --rm -v "$PWD/dist:/out" -v moode-build-cache:/cache moode-cross:test build --pi-model 3b+ --moode-version 10.3.6
+          docker run --rm -v "$PWD/cached-dist:/out" -v moode-build-cache:/cache moode-cross:test build --pi-model 3b+ --moode-version r1036
+          grep -q 'Finished .*release' cached-dist/build.log
+          if grep -q '^   Compiling ' cached-dist/build.log; then
+            echo 'Cargo did not reuse the compiled cache'; exit 1
+          fi
+          cd dist && sha256sum -c SHA256SUMS
+      - name: Install and check in clean ARM64 Trixie
+        run: |
+          docker build -f tests/Dockerfile.runtime -t moode-cross:runtime .
+          docker run --rm --platform linux/arm64 -v "$PWD/dist:/artifacts:ro" moode-cross:runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: librespot-moode-10.3.6-arm64
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: librespot-moode-10.3.6-arm64
+          path: dist
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Container release tags
+        id: tags
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'Release tags must have the form v1.2.3'; exit 1
+          fi
+          echo "major=${VERSION%%.*}" >> "$GITHUB_OUTPUT"
+      - name: Publish compiler
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.IMAGE }}:${{ github.ref_name }}
+            ${{ env.IMAGE }}:${{ steps.tags.outputs.major }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          labels: org.opencontainers.image.revision=${{ github.sha }}
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: gh release create "$VERSION" dist/* --verify-tag --generate-notes --title "$VERSION"

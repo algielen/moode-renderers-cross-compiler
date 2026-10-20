@@ -84,20 +84,22 @@ class ProfileTests(unittest.TestCase):
 
     def test_failed_build_exports_no_success_artifacts(self):
         # Exercise the parent process failure boundary without downloading sources.
-        with tempfile.TemporaryDirectory() as output:
+        with tempfile.TemporaryDirectory() as output, tempfile.TemporaryDirectory() as cache:
             args = type("Args", (), dict(moode_version="10.3.6", pi_model="3b+",
                                         renderer="librespot", output=output, jobs=1))()
             class FailedProcess:
                 stdout = ["compiler failed\n"]
                 def wait(self):
                     return 1
-            with patch.object(cli.subprocess, "Popen", return_value=FailedProcess()), contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(cli, "Path", side_effect=lambda path: Path(cache) if path == "/cache" else Path(path)), \
+                    patch.object(cli.subprocess, "Popen", return_value=FailedProcess()), \
+                    contextlib.redirect_stdout(io.StringIO()):
                 with self.assertRaisesRegex(ValueError, "Build failed"):
                     cli.build(args)
             self.assertEqual([p.name for p in Path(output).iterdir()], ["build.failed.log"])
 
     def test_airplay_second_component_failure_discards_first_package(self):
-        with tempfile.TemporaryDirectory() as output:
+        with tempfile.TemporaryDirectory() as output, tempfile.TemporaryDirectory() as cache:
             args = type("Args", (), dict(moode_version="10.3.6", pi_model="3b+",
                                         renderer="airplay", output=output, jobs=1))()
             class FailedSecondComponent:
@@ -108,7 +110,9 @@ class ProfileTests(unittest.TestCase):
                 stage = Path(command[command.index("--stage") + 1])
                 (stage / "shairport-sync_5.5.2-1moode1_arm64.deb").write_bytes(b"first package")
                 return FailedSecondComponent()
-            with patch.object(cli.subprocess, "Popen", side_effect=start_worker), contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(cli, "Path", side_effect=lambda path: Path(cache) if path == "/cache" else Path(path)), \
+                    patch.object(cli.subprocess, "Popen", side_effect=start_worker), \
+                    contextlib.redirect_stdout(io.StringIO()):
                 with self.assertRaisesRegex(ValueError, "Build failed"):
                     cli.build(args)
             self.assertEqual([p.name for p in Path(output).iterdir()], ["build.failed.log"])

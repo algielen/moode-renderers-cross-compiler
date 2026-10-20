@@ -20,15 +20,26 @@ class ReleaseScopeTests(unittest.TestCase):
     def test_selected_downloads_pass(self):
         with tempfile.TemporaryDirectory() as directory:
             self.fixture(Path(directory))
-            scope.check(directory)
+            scope.check(directory, "10.3.6")
+
+    def test_initial_profile_requires_spotify_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "librespot").mkdir()
+            (root / "librespot/manifest.json").write_text(json.dumps({
+                "profile": {"moode_version": "10.2.0"}, "packages": [{"name": "librespot"}]}))
+            scope.check(root)
+            (root / "qobuz").mkdir()
+            with self.assertRaises(ValueError):
+                scope.check(root)
 
     def test_airplay_directory_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.fixture(root)
             (root / "airplay").mkdir()
-            with self.assertRaisesRegex(ValueError, "only librespot and qobuz"):
-                scope.check(root)
+            with self.assertRaisesRegex(ValueError, "only approved renderer"):
+                scope.check(root, "10.3.6")
 
     def test_mislabeled_airplay_package_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -39,4 +50,4 @@ class ReleaseScopeTests(unittest.TestCase):
             manifest["packages"] = [{"name": "shairport-sync"}]
             path.write_text(json.dumps(manifest))
             with self.assertRaisesRegex(ValueError, "Unexpected release package"):
-                scope.check(root)
+                scope.check(root, "10.3.6")

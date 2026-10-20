@@ -75,6 +75,39 @@ recorded in [licensing.md](licensing.md). No release, image or maintainer messag
 was published, and no physical Pi was changed. The updated compiler-image notice
 export has unit coverage but has not yet been collected into a new delivery bundle.
 
+## CI performance changes
+
+Run `39497717932` reached the former 60-minute limit after 26 of 27 builds; the
+last source/notice export was interrupted. The matrix ran 46m21s. Warm librespot
+compilation took 0.21–0.25s per profile, but each whole warm build took 111–113s;
+the twelve matrix invocations consumed about 22m24s. Runtime/source checks had not
+started. These observations distinguish compilation from repeated export work.
+
+A single-thread gzip benchmark used the same 1,031,188,480-byte librespot source
+tar payload on Ryzen 7 5800X3D, WSL2, Python 3.13.5/zlib 1.3.1. Level 6 took
+11.245s and produced 111,673,756 bytes; level 9 took 30.227s and produced
+108,887,186 bytes. Decompressed SHA-256s matched. This measures compression only,
+excluding startup, initial decompression and verification; it is not a build timing.
+
+Companion archives now use level 6, and logs time copying, vendoring, metadata,
+notice discovery, compression and Debian repacking separately. CI splits selected
+profiles into renderer jobs with separate caches. Aggregate verification checks
+exact planned coverage and equivalent-recipe binary hashes, then binds release
+files to approved hashes. Empty Qobuz selections are omitted; documentation-only
+plans skip builds. Normal full verification retains the entire matrix and all
+runtime/source checks. The explicit profile-only smoke option validates only its
+selected profile and labels the resulting unpublished draft accordingly.
+Unit checks cover missing/duplicate reports, recipe/hash mismatches and extra or
+modified release files. CI end-to-end savings remain to be measured.
+
+Before the initial 10.2.0 workflow trial, 59 unit tests passed without root or
+networking and workflow `actionlint` passed. Local renderer-shard builds passed for
+10.3.6 and 10.2.0; their aggregate/hash-binding paths were exercised, including a
+Spotify-only 10.2.0 release directory. The initial profile's three component source
+exports passed checks and locked Cargo resolution offline. The 10.3.6 bundles also
+passed QEMU installation/informational checks. This does not replace a complete
+post-change compatibility-matrix run; the requested GitHub trial is profile-only.
+
 ## Original CI validation
 
 The [v0.1.1 verification job](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/39461501856) passed on 2026-10-20: CLI/failure tests, cache reuse, all 27 profile/renderer builds, and installation plus informational CLI execution of every distinct bundle in clean ARM64 Debian Trixie. QEMU/binfmt was used for these runtime checks. That particular runtime test could not run locally because this `wslc` host lacks ARM binfmt emulation. The minimal runtime image explicitly points apt at its bootstrapped CA bundle for verified HTTPS access to Debian Snapshot.

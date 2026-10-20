@@ -86,15 +86,18 @@ does not support Apache-2.0/GPLv2 combinations. Changing FFmpeg alone would not
 resolve the header question. A maintainer question is retained locally under
 ignored `dist/airplay-license-question.md` and has **not been sent**.
 
-The owner selected **v0.1.2 with Spotify/Qobuz downloads only**. AirPlay publication
+The owner selected **v0.1.2 for moOde 10.2.0 with Spotify downloads only**, then
+subsequent releases can advance through 10.2.1 and later profiles. Qobuz is absent
+before 10.3.4. AirPlay publication
 is deferred, its question stays local and unsent, and the compiler remains locally
-built. The workflow allowlist includes only moOde 10.3.6 librespot and pibuz.
+built. The workflow allowlist follows the selected profile and excludes AirPlay;
+the first release therefore contains librespot only.
 Historical qbzd is not a download in this release. The deleted v0.1.1 stays deleted.
 Future scope does not erase source/notice obligations for previously distributed
 artifacts. Compiler-image publication still requires a fresh notice/source delivery
 bundle; the existing source bundle is about 2.3 GB compressed.
 
-For the two download packages, every actual Cargo build package has a recognized
+For the reviewed librespot and pibuz recipes, every actual Cargo build package has a recognized
 offered license selection. The native interfaces/bundles inspected are ALSA and
 OpenSSL for librespot, and ALSA, AWS-LC and bundled SQLite for pibuz. AWS-LC's full
 composite ISC/Apache/MIT/BSD grant and nested notices are retained, not reduced to
@@ -103,7 +106,8 @@ license are retained. Dynamically linked system libraries are package dependenci
 not copied into these downloads. The source and notice archives retain original
 Rust/runtime and nested native-code notices. MPL source instructions are included
 inside packages and alongside binaries. This scoped review does not clear AirPlay,
-historical qbzd or the compiler image for publication.
+historical qbzd or the compiler image for publication. Pibuz is reviewed but is
+not part of the first 10.2.0 release.
 
 ### Remediation implemented in the working tree
 

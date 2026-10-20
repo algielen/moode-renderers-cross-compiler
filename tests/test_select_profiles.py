@@ -31,9 +31,21 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(planner.select([], self.versions, full=True)["versions"], self.versions)
 
     def test_release_keeps_default_downloads_without_rebuilding_history(self):
-        self.assertEqual(planner.select([], self.versions, release=True)["versions"], ["10.3.6"])
-        self.assertEqual(planner.select(["profiles/10.3.7.json"], self.versions, release=True)["versions"],
+        self.assertEqual(planner.select([], self.versions, release=True, release_profile="10.3.6")["versions"], ["10.3.6"])
+        self.assertEqual(planner.select(["profiles/10.3.7.json"], self.versions, release=True, release_profile="10.3.6")["versions"],
                          ["10.3.6", "10.3.7"])
+
+    def test_explicit_smoke_test_overrides_full_matrix_selection(self):
+        self.assertEqual(planner.select(["compiler/recipes.py"], self.versions, profile_only=True, release_profile="10.3.6"),
+                         {"versions": ["10.3.6"], "build": True, "full": False})
+        with self.assertRaisesRegex(ValueError, "unavailable"):
+            planner.select([], ["10.3.5"], profile_only=True)
+
+    def test_first_and_subsequent_profile_releases(self):
+        available = ["10.2.0", "10.2.1", "10.3.6"]
+        self.assertEqual(planner.select([], available, release=True)["versions"], ["10.2.0"])
+        self.assertEqual(planner.select(["compiler/recipes.py"], available, profile_only=True,
+                                        release_profile="10.2.1")["versions"], ["10.2.1"])
 
     def test_push_and_pr_baselines(self):
         self.assertEqual(planner.baseline({"before": "abc", "ref": "refs/heads/main"}, "push", "HEAD"), "abc")

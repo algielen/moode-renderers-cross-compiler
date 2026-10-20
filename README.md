@@ -8,8 +8,9 @@ Cross-compile **Spotify Connect, AirPlay, and Qobuz Connect** for moOde on **Tri
 
 Repository code uses the [MIT license](LICENSE). Renderer binaries and the compiler image retain third-party licenses. The [release license audit](docs/licensing.md) identifies outstanding source and notice requirements for v0.1.1; it is not yet cleared as a complete compliant distribution.
 
-The v0.1.2 download scope is **Spotify and Qobuz for moOde 10.3.6**, with matching
-source and notice archives. AirPlay downloads are deferred for licensing
+The first corrected release, v0.1.2, targets **Spotify for moOde 10.2.0**, with
+matching source and notice archives. Later releases can advance through the
+profiles starting with 10.2.1. AirPlay downloads are deferred for licensing
 clarification. The local compiler continues to support all listed profiles.
 
 Build the compiler locally from this checkout while public image remediation is pending:
@@ -181,7 +182,19 @@ docker run --rm --entrypoint python3 moode-cross:local -m unittest discover -s /
 
 Pull requests and branch pushes compile only added or modified profiles and check their distinct package bundles in disposable ARM64 Trixie. Documentation-only changes skip compilation. Lightweight CLI/profile tests always run. Shared compiler, Dockerfile, workflow or build/runtime test changes trigger the full profile matrix and cache reuse check. QEMU is used only for runtime tests; compilation uses native AMD64 tools.
 
-Pull requests compare with their merge base; branch pushes compare with the previous commit from the push event. Release tags and manual runs compare with the preceding release tag. Without a baseline, CI checks all profiles. Releases also build the default 10.3.6 profile to supply their download bundle. To force all profiles, run **Build and release → Run workflow → Verify every profile** in GitHub Actions.
+Selected profiles run in parallel jobs grouped by renderer, each with its own
+cache, runtime checks and offline source checks. A final job verifies complete
+coverage and binary agreement for equivalent recipes. Release downloads must
+match its approved file hashes; AirPlay remains outside the publication allowlist.
+
+Pull requests compare with their merge base; branch pushes compare with the previous commit from the push event. Release tags and manual runs compare with the preceding release tag. Without a baseline, CI checks all profiles. Releases also build their selected download profile (initially 10.2.0). To force all profiles, run **Build and release → Run workflow → Verify every profile** in GitHub Actions.
+
+For a shorter workflow smoke test, select **Smoke test only the release profile**
+and enter the desired **moOde profile for release downloads** (initially 10.2.0).
+This explicit option overrides full-matrix selection and cannot be combined with
+**Verify every profile**. A run against a release tag exercises draft creation;
+the draft is labelled as limited validation and remains unpublished. Select
+10.2.1 for the next profile release, using a new release tag.
 
 Push a release tag to build and prepare a **draft** GitHub release for licensing review. Each renderer includes companion source and notice archives; notices are also installed under `/usr/share/doc/<name>/redistribution` in its Debian package. The standalone bundle includes these archives, manifests, logs and checksums. Source archives retain pinned upstream sources, locked Cargo dependencies (including other platforms and build dependencies), Rust library sources and build/package scripts. Keep the source and notice archives with binaries when redistributing.
 

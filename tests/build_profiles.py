@@ -16,6 +16,7 @@ from check_redistribution import check as check_redistribution
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--versions-json", help="JSON array of moOde versions; omitted builds all profiles")
+parser.add_argument("--renderer", choices=("librespot", "airplay", "qobuz"), help="Build only this renderer shard")
 args = parser.parse_args()
 versions = json.loads(args.versions_json) if args.versions_json is not None else None
 if versions is not None:
@@ -31,6 +32,8 @@ for profile in cli.profiles():
     if versions is not None and version not in versions:
         continue
     for renderer in profile["renderers"]:
+        if args.renderer and renderer != args.renderer:
+            continue
         selected = cli.select_profile(version, "3b+", renderer)
         output = Path("/out") / version / renderer
         subprocess.run([sys.executable, str(ROOT / "compiler/cli.py"), "build",

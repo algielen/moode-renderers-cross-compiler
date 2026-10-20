@@ -7,6 +7,13 @@ import re
 import shutil
 import subprocess
 import tarfile
+import time
+
+
+def elapsed(name, started):
+    finished = time.perf_counter()
+    print(f"Redistribution phase: {name}: {finished - started:.3f}s", flush=True)
+    return finished
 
 
 def digest(path):
@@ -38,6 +45,7 @@ def collect(source, package, profile, stage, work, env, artifacts=None):
     """Archive pristine pinned sources and the entire locked Cargo dependency closure."""
     root = work / "redistribution"
     root.mkdir()
+    started = time.perf_counter()
     upstream = root / "upstream"
     shutil.copytree(source, upstream, ignore=shutil.ignore_patterns(".git"))
     compiler = Path(__file__).resolve().parent
@@ -54,8 +62,10 @@ def collect(source, package, profile, stage, work, env, artifacts=None):
         audit = compiler / "THIRD-PARTY.md"
     shutil.copy2(audit, scripts / "docs/licensing.md")
     (root / "recipe.json").write_text(json.dumps({"package": package, "profile": profile}, indent=2) + "\n")
+    elapsed("copy pinned sources and build scripts", started)
     inventory = []
     if package["build_system"].startswith("cargo"):
+        started = time.perf_counter()
         workspace = source / package["workspace"]
         config = subprocess.check_output(
             ["cargo", "vendor", "--locked", "--versioned-dirs", str(root / "vendor")],
@@ -63,6 +73,7 @@ def collect(source, package, profile, stage, work, env, artifacts=None):
         # Config paths must work after extraction on another machine.
         config = config.replace(str(root / "vendor"), "vendor")
         (root / "cargo-vendor-config.toml").write_text(config)
+        started = elapsed("Cargo vendoring", started)
         metadata_args = ["cargo", "metadata", "--locked", "--format-version", "1"]
         if package["features"]:
             metadata_args += ["--features", ",".join(package["features"])]
@@ -77,6 +88,7 @@ def collect(source, package, profile, stage, work, env, artifacts=None):
             inventory.append({**{key: item.get(key) for key in ("id", "name", "version", "source", "license", "license_file")},
                               "built": item["id"] in built_ids})
         (root / "build-artifacts.json").write_text(json.dumps(artifacts or [], indent=2) + "\n")
+        started = elapsed("Cargo metadata", started)
         # Rust's standard library is statically linked too. Retain its source and notices.
         sysroot = Path(subprocess.check_output(["rustc", "--print", "sysroot"], env=env, text=True).strip())
         shutil.copytree(sysroot / "lib/rustlib/src/rust", root / "rust-library")
@@ -84,10 +96,12 @@ def collect(source, package, profile, stage, work, env, artifacts=None):
         for path in notice_files(sysroot / "share/doc/rust"):
             if path.parent == sysroot / "share/doc/rust":
                 shutil.copy2(path, root / "rust-licenses" / path.name)
+        elapsed("Rust source copying", started)
     (root / "dependencies.json").write_text(json.dumps(inventory, indent=2) + "\n")
     # These are the installed build inputs, not an assertion that each is linked.
     shutil.copy2(compiler / "toolchain-packages.tsv", root / "toolchain-packages.tsv")
     notices = work / "notices"
+    started = time.perf_counter()
     notices.mkdir()
     shutil.copytree(Path("/usr/share/common-licenses"), notices / "debian-common-licenses")
     for copyright_file in Path("/usr/share/doc").glob("*/copyright"):
@@ -103,6 +117,7 @@ def collect(source, package, profile, stage, work, env, artifacts=None):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, dest)
     archive_name = f"{package['name']}_{package['package_version']}_sources.tar.gz"
+    elapsed("notice discovery and copying", started)
     instructions = (
         f"Source for {package['name']} {package['package_version']}: {archive_name}\n"
         "Obtain the companion source archive from the same GitHub release as this binary:\n"
@@ -123,16 +138,20 @@ def collect(source, package, profile, stage, work, env, artifacts=None):
         instructions += f"Also obtain {package['name']}_{package['package_version']}_debian.tar.xz from the same release for the exact Debian packaging input.\n"
     (root / "SOURCE.txt").write_text(instructions)
     (notices / "SOURCE.txt").write_text(instructions)
-    with tarfile.open(stage / archive_name, "w:gz") as archive:
+    started = time.perf_counter()
+    with tarfile.open(stage / archive_name, "w:gz", compresslevel=6) as archive:
         archive.add(root, arcname="source")
+    started = elapsed("source archive gzip level 6", started)
     notice_name = f"{package['name']}_{package['package_version']}_notices.tar.gz"
-    with tarfile.open(stage / notice_name, "w:gz") as archive:
+    with tarfile.open(stage / notice_name, "w:gz", compresslevel=6) as archive:
         archive.add(notices, arcname="notices")
+    elapsed("notice archive gzip level 6", started)
     return notices, {"source_archive": archive_name, "source_sha256": digest(stage / archive_name),
                      "notice_archive": notice_name, "notice_sha256": digest(stage / notice_name)}
 
 
 def add_package_notices(deb, notices, name, work, env):
+    started = time.perf_counter()
     root = work / "with-notices"
     subprocess.run(["dpkg-deb", "--raw-extract", str(deb), str(root)], check=True)
     dest = root / "usr/share/doc" / name / "redistribution"
@@ -143,3 +162,4 @@ def add_package_notices(deb, notices, name, work, env):
         f"{hashes.md5(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}\n"
         for path in sorted(root.rglob("*")) if path.is_file() and "DEBIAN" not in path.relative_to(root).parts))
     subprocess.run(["dpkg-deb", "--root-owner-group", "--build", str(root), str(deb)], env=env, check=True)
+    elapsed("Debian repacking with notices", started)

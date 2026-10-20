@@ -11,6 +11,14 @@ on:
         description: Verify every profile
         type: boolean
         default: false
+      profile_only:
+        description: Smoke test only the release profile (not full compatibility validation)
+        type: boolean
+        default: false
+      profile:
+        description: moOde profile for release downloads
+        type: string
+        default: '10.2.0'
 
 permissions:
   contents: read
@@ -22,6 +30,9 @@ jobs:
       versions: ${{ steps.profiles.outputs.versions }}
       build: ${{ steps.profiles.outputs.build }}
       full: ${{ steps.profiles.outputs.full }}
+      matrix: ${{ steps.profiles.outputs.matrix }}
+      profile_only: ${{ steps.profiles.outputs.profile_only }}
+      release_profile: ${{ steps.profiles.outputs.release_profile }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,9 +43,13 @@ jobs:
         id: profiles
         env:
           FULL: ${{ inputs.full || false }}
+          PROFILE_ONLY: ${{ inputs.profile_only || false }}
+          RELEASE_PROFILE: ${{ inputs.profile || '10.2.0' }}
         run: |
           args=()
           if [ "$FULL" = true ]; then args+=(--full); fi
+          if [ "$PROFILE_ONLY" = true ]; then args+=(--profile-only); fi
+          args+=(--release-profile "$RELEASE_PROFILE")
           python3 tests/select_profiles.py "${args[@]}"
 
   verify:
@@ -43,6 +58,13 @@ jobs:
     runs-on: ubuntu-24.04
     # Source/notice exports are part of verification; a cold full matrix exceeds one hour.
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      RENDERER: ${{ matrix.renderer }}
+      VERSIONS: ${{ toJSON(matrix.versions) }}
+      RELEASE_PROFILE: ${{ needs.plan.outputs.release_profile }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -56,34 +78,35 @@ jobs:
           load: true
           tags: moode-cross:test
           platforms: linux/amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=compiler-${{ matrix.renderer }}
+            type=gha
+          cache-to: type=gha,scope=compiler-${{ matrix.renderer }},mode=max
       - name: Check CLI and failure handling
         run: |
           docker run --rm --entrypoint python3 moode-cross:test -m unittest discover -s /opt/tests -v
           docker run --rm moode-cross:test list-profiles
-          if docker run --rm --read-only --tmpfs /tmp moode-cross:test build --pi-model 3b+ --moode-version 10.3.6; then
+          if docker run --rm --read-only --tmpfs /tmp moode-cross:test build --pi-model 3b+ --moode-version "$RELEASE_PROFILE"; then
             echo 'Expected read-only output to fail'; exit 1
           fi
       - name: Cross-build and verify cache reuse
-        if: needs.plan.outputs.full == 'true'
+        if: needs.plan.outputs.full == 'true' && matrix.renderer == 'librespot'
         run: |
           mkdir -p dist cached-dist
-          docker volume create moode-build-cache
-          docker run --rm -v "$PWD/dist:/out" -v moode-build-cache:/cache moode-cross:test build --pi-model 3b+ --moode-version 10.3.6
-          docker run --rm -v "$PWD/cached-dist:/out" -v moode-build-cache:/cache moode-cross:test build --pi-model 3b+ --moode-version r1036
+          docker volume create "moode-build-cache-$RENDERER"
+          ALIAS=$(python3 -c 'import json, os; print(json.load(open("profiles/" + os.environ["RELEASE_PROFILE"] + ".json"))["aliases"][0])')
+          docker run --rm -v "$PWD/dist:/out" -v "moode-build-cache-$RENDERER:/cache" moode-cross:test build --pi-model 3b+ --moode-version "$RELEASE_PROFILE"
+          docker run --rm -v "$PWD/cached-dist:/out" -v "moode-build-cache-$RENDERER:/cache" moode-cross:test build --pi-model 3b+ --moode-version "$ALIAS"
           grep -q 'Finished .*release' cached-dist/build.log
           if grep -q '^   Compiling ' cached-dist/build.log; then
             echo 'Cargo did not reuse the compiled cache'; exit 1
           fi
           cd dist && sha256sum -c SHA256SUMS
       - name: Build selected release profiles
-        env:
-          VERSIONS: ${{ needs.plan.outputs.versions }}
         run: |
           mkdir -p profile-dist
-          docker run --rm -v "$PWD/profile-dist:/out" -v moode-build-cache:/cache \
-            --entrypoint python3 moode-cross:test /opt/tests/build_profiles.py --versions-json "$VERSIONS"
+          docker run --rm -v "$PWD/profile-dist:/out" -v "moode-build-cache-$RENDERER:/cache" \
+            --entrypoint python3 moode-cross:test /opt/tests/build_profiles.py --versions-json "$VERSIONS" --renderer "$RENDERER"
       - name: Install and check in clean ARM64 Trixie
         run: |
           docker build -f tests/Dockerfile.runtime -t moode-cross:runtime .
@@ -92,29 +115,88 @@ jobs:
         run: |
           docker run --rm --network none -v "$PWD/profile-dist:/artifacts:ro" \
             --entrypoint python3 moode-cross:test /opt/tests/check_source_exports.py /artifacts
+      - name: Record verified file hashes
+        run: |
+          docker run --rm -v "$PWD/profile-dist:/out" --entrypoint python3 moode-cross:test \
+            /opt/tests/ci_verification.py report /out --renderer "$RENDERER" --versions-json "$VERSIONS" \
+            --commit "$GITHUB_SHA" --output "/out/verification-$RENDERER.json"
       - uses: actions/upload-artifact@v4
-        if: startsWith(github.ref, 'refs/tags/v')
         with:
-          name: renderers-moode-10.3.6-arm64
-          # AirPlay publication is deferred pending its separate license review.
-          path: |
-            profile-dist/10.3.6/librespot/
-            profile-dist/10.3.6/qobuz/
+          name: verification-${{ matrix.renderer }}
+          path: profile-dist/verification-${{ matrix.renderer }}.json
           if-no-files-found: error
+          overwrite: true
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.renderer != 'airplay' && contains(matrix.versions, needs.plan.outputs.release_profile)
+        with:
+          name: renderers-moode-${{ needs.plan.outputs.release_profile }}-arm64-${{ matrix.renderer }}
+          # AirPlay publication is deferred pending its separate license review.
+          path: profile-dist/${{ needs.plan.outputs.release_profile }}/${{ matrix.renderer }}/
+          if-no-files-found: error
+          overwrite: true
+
+  aggregate:
+    name: Verify all selected profiles
+    needs: [plan, verify]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every planned shard to pass
+        if: needs.plan.outputs.build == 'true' && needs.verify.result != 'success'
+        run: exit 1
+      - uses: actions/checkout@v4
+        if: needs.plan.outputs.build == 'true'
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.build == 'true'
+        with:
+          pattern: verification-*
+          merge-multiple: true
+          path: verification
+      - name: Check coverage and equivalent recipes across shards
+        if: needs.plan.outputs.build == 'true'
+        env:
+          VERSIONS: ${{ needs.plan.outputs.versions }}
+          RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          RELEASE_PROFILE: ${{ needs.plan.outputs.release_profile }}
+        run: |
+          args=()
+          if [ "$RELEASE" = true ]; then args+=(--release); fi
+          python3 tests/ci_verification.py aggregate verification --versions-json "$VERSIONS" \
+            --commit "$GITHUB_SHA" --release-profile "$RELEASE_PROFILE" --output approval.json "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        if: needs.plan.outputs.build == 'true'
+        with:
+          name: verification-approval
+          path: approval.json
+          if-no-files-found: error
+          overwrite: true
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: verify
+    needs: [plan, aggregate]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: write
+    env:
+      RELEASE_PROFILE: ${{ needs.plan.outputs.release_profile }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: renderers-moode-10.3.6-arm64
-          path: dist
+          pattern: renderers-moode-${{ needs.plan.outputs.release_profile }}-arm64-*
+          path: downloads
+      - name: Select approved renderer downloads
+        run: |
+          mkdir dist
+          for renderer in librespot qobuz; do
+            source="downloads/renderers-moode-$RELEASE_PROFILE-arm64-$renderer"
+            if [ -d "$source" ]; then mv "$source" "dist/$renderer"; fi
+          done
+      - uses: actions/download-artifact@v4
+        with:
+          name: verification-approval
+          path: verification
       # Compiler-image publication is suspended until its separate source audit is complete.
       - name: Check release tag
         env:
@@ -125,14 +207,18 @@ jobs:
           fi
       - name: Verify redistribution materials
         run: |
-          python3 tests/check_redistribution.py dist
-          python3 tests/check_release_scope.py dist
+          python3 tests/ci_verification.py bind dist --approval verification/approval.json --commit "$GITHUB_SHA" --release-profile "$RELEASE_PROFILE"
           python3 tests/review_licenses.py dist --output license-selections.json
       - name: Prepare draft for licensing review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ github.ref_name }}
+          PROFILE_ONLY: ${{ needs.plan.outputs.profile_only }}
         run: |
-          tar -czf moode-10.3.6-renderers-arm64.tar.gz -C dist .
-          sha256sum dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz moode-10.3.6-renderers-arm64.tar.gz license-selections.json | sed 's@dist/[^/]*/@@' > SHA256SUMS
-          gh release create "$VERSION" dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz moode-10.3.6-renderers-arm64.tar.gz license-selections.json SHA256SUMS --draft --verify-tag --notes-file docs/release-notes.md --title "$VERSION"
+          BUNDLE="moode-$RELEASE_PROFILE-renderers-arm64.tar.gz"
+          tar -czf "$BUNDLE" -C dist .
+          sha256sum dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz "$BUNDLE" license-selections.json | sed 's@dist/[^/]*/@@' > SHA256SUMS
+          args=()
+          if [ "$PROFILE_ONLY" = true ]; then args+=(--limited); fi
+          python3 tests/release_notes.py "$RELEASE_PROFILE" --output release-notes.md "${args[@]}"
+          gh release create "$VERSION" dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz "$BUNDLE" license-selections.json SHA256SUMS --draft --verify-tag --notes-file release-notes.md --title "$VERSION"

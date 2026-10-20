@@ -117,7 +117,16 @@ def build_cargo(source, package, profile, stage, work, env):
             "--package", package["cargo_package"]]
     if package["features"]:
         args += ["--features", ",".join(package["features"])]
-    run(args, cwd=workspace, env=env)
+    messages = run([*args, "--message-format=json-render-diagnostics"], cwd=workspace, env=env,
+                   stdout=subprocess.PIPE, text=True).stdout
+    artifacts = []
+    for line in messages.splitlines():
+        message = json.loads(line)
+        if message["reason"] == "compiler-artifact":
+            artifacts.append({"package_id": message["package_id"], "features": message["features"],
+                              "target": message["target"]["name"], "kind": message["target"]["kind"],
+                              "role": "target" if any(profile["target"] in Path(path).parts
+                                                       for path in message["filenames"]) else "host"})
     deb = stage / package_filename(package)
     if package["build_system"] == "cargo-deb":
         run(["cargo", "deb", "--no-build", "--target", profile["target"],
@@ -128,6 +137,7 @@ def build_cargo(source, package, profile, stage, work, env):
         built = stage_binary(source, package, binary, work / "root", work, env)
         shutil.copy2(built, deb)
     return {"rustc": capture(["rustc", "--version"], env=env),
+            "cargo_artifacts": artifacts,
             "cargo_lock_sha256": hashlib.sha256((workspace / "Cargo.lock").read_bytes()).hexdigest(),
             "default_features": True, "features": package["features"], "build_env": package.get("build_env", {})}
 
@@ -221,7 +231,7 @@ def build_package(package, profile, stage, jobs):
             details = build_cargo(source, package, profile, stage, work, env)
         else:
             details = build_native(source, package, stage, work, env, jobs)
-        notices, materials = compliance.collect(source, package, profile, stage, work, env)
+        notices, materials = compliance.collect(source, package, profile, stage, work, env, details.get("cargo_artifacts"))
         if package["build_system"] == "shairport":
             # Ship the exact packaging input, including its copyright notices.
             packaging = stage / f"{package['name']}_{package['package_version']}_debian.tar.xz"

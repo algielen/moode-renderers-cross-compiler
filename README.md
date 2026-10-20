@@ -8,6 +8,10 @@ Cross-compile **Spotify Connect, AirPlay, and Qobuz Connect** for moOde on **Tri
 
 Repository code uses the [MIT license](LICENSE). Renderer binaries and the compiler image retain third-party licenses. The [release license audit](docs/licensing.md) identifies outstanding source and notice requirements for v0.1.1; it is not yet cleared as a complete compliant distribution.
 
+The v0.1.2 download scope is **Spotify and Qobuz for moOde 10.3.6**, with matching
+source and notice archives. AirPlay downloads are deferred for licensing
+clarification. The local compiler continues to support all listed profiles.
+
 Build the compiler locally from this checkout while public image remediation is pending:
 
 ```bash

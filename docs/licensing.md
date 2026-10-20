@@ -58,6 +58,53 @@ Collection and reproducibility evidence do not substitute for reviewing actual
 license terms, selected alternatives and bundled code. The public distribution is
 not declared cleared.
 
+### Follow-up review and release scope
+
+The follow-up collector retains inline notices (including Shairport's `alac.c`
+and `tinysvcmdns.c` headers) in full. Cargo manifests now record actual compiler
+artifacts, features and host/target roles. Dependency metadata uses the build's
+features and collection fails if a built package is absent. The complete vendor
+closure is still supplied, including unused workspace/platform packages.
+
+`tests/review_licenses.py ARTIFACTS --output REPORT.json` proposes offered Cargo
+license alternatives for built packages only; it preserves AND obligations and
+leaves unknown terms unresolved. It is not a native-code or legal clearance.
+The current report covers 280 librespot, 430 qbzd and 363 pibuz build packages.
+Two qbzd workspace crates (`qbz-cache`, `qbz-library`) omit Cargo license metadata;
+their manifests name blitzkriegfc, matching the pinned repository's root MIT grant.
+That source evidence needs to accompany review rather than silently inventing
+metadata. Unused Slint workspace dependencies do not establish that the headless
+binary incorporates Slint.
+
+AirPlay publication remains on hold. All four pinned Shairport versions contain
+the same `nqptp-shm-structures.h` GPLv2-only notice. The header contains ABI
+constants/structures, so its effect on the combined work needs clarification;
+this audit does not assume those declarations are copyrightable. The actual
+FFmpeg libraries report GPLv2-or-later and Shairport links OpenSSL 3 (Apache-2.0).
+Apache's [compatibility guidance](https://www.apache.org/licenses/GPL-compatibility)
+does not support Apache-2.0/GPLv2 combinations. Changing FFmpeg alone would not
+resolve the header question. A maintainer question is retained locally under
+ignored `dist/airplay-license-question.md` and has **not been sent**.
+
+The owner selected **v0.1.2 with Spotify/Qobuz downloads only**. AirPlay publication
+is deferred, its question stays local and unsent, and the compiler remains locally
+built. The workflow allowlist includes only moOde 10.3.6 librespot and pibuz.
+Historical qbzd is not a download in this release. The deleted v0.1.1 stays deleted.
+Future scope does not erase source/notice obligations for previously distributed
+artifacts. Compiler-image publication still requires a fresh notice/source delivery
+bundle; the existing source bundle is about 2.3 GB compressed.
+
+For the two download packages, every actual Cargo build package has a recognized
+offered license selection. The native interfaces/bundles inspected are ALSA and
+OpenSSL for librespot, and ALSA, AWS-LC and bundled SQLite for pibuz. AWS-LC's full
+composite ISC/Apache/MIT/BSD grant and nested notices are retained, not reduced to
+the Rust wrapper's license. SQLite's public-domain source header and wrapper MIT
+license are retained. Dynamically linked system libraries are package dependencies,
+not copied into these downloads. The source and notice archives retain original
+Rust/runtime and nested native-code notices. MPL source instructions are included
+inside packages and alongside binaries. This scoped review does not clear AirPlay,
+historical qbzd or the compiler image for publication.
+
 ### Remediation implemented in the working tree
 
 New builds collect a source archive and notice archive per package. The source archive
@@ -74,7 +121,8 @@ The workflow now creates drafts and does not publish compiler images. These safe
 do **not** publish the prepared v0.1.1 supplements or establish clearance. Before making
 a draft public, review license choices, bundled native code and source completeness for
 the actual linked executable, including system static/runtime code. Filename-based
-notice collection is a starting inventory; review inline notices too. Compiler image
+notice collection now also retains complete text files containing inline copyright,
+SPDX or license markers; this remains an inventory, not clearance. Compiler image
 source delivery remains a separate prerequisite to restoring GHCR publication.
 
 The image-source collector can run inside the exact compiler image being audited:

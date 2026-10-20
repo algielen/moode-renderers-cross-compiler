@@ -57,6 +57,24 @@ These checks establish correspondence and integrity, not blanket license clearan
 Ignored logs/materials are under `dist/licensing-*`; see [licensing.md](licensing.md)
 for delivery status and outstanding review.
 
+## Follow-up licensing validation
+
+The follow-up notice/artifact collection passed all 27 profile/renderer builds,
+manifest/archive checksum checks and equivalent-recipe binary comparisons in
+`dist/licensing-review-matrix-02`. All eight distinct component source exports
+passed checks, including locked offline Cargo resolution with an empty Cargo home.
+All seven distinct bundles installed and passed informational help/version and
+library checks with `qemu-aarch64` in a disposable compiler container; service
+startup was disabled. These are not playback or discovery checks.
+
+The final tooling image passed 42 unit tests as UID/GID 65534 without networking.
+This includes inline-notice retention, compiler component notices, offered-license
+expression handling and actual-build inventory checks. The three Cargo reports
+are review proposals; unresolved qbzd metadata and the AirPlay header question are
+recorded in [licensing.md](licensing.md). No release, image or maintainer message
+was published, and no physical Pi was changed. The updated compiler-image notice
+export has unit coverage but has not yet been collected into a new delivery bundle.
+
 ## Original CI validation
 
 The [v0.1.1 verification job](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/39461501856) passed on 2026-10-20: CLI/failure tests, cache reuse, all 27 profile/renderer builds, and installation plus informational CLI execution of every distinct bundle in clean ARM64 Debian Trixie. QEMU/binfmt was used for these runtime checks. That particular runtime test could not run locally because this `wslc` host lacks ARM binfmt emulation. The minimal runtime image explicitly points apt at its bootstrapped CA bundle for verified HTTPS access to Debian Snapshot.

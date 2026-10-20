@@ -95,7 +95,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           name: renderers-moode-10.3.6-arm64
-          path: profile-dist/10.3.6/
+          # AirPlay publication is deferred pending its separate license review.
+          path: |
+            profile-dist/10.3.6/librespot/
+            profile-dist/10.3.6/qobuz/
           if-no-files-found: error
 
   release:
@@ -120,11 +123,15 @@ jobs:
             echo 'Release tags must have the form v1.2.3'; exit 1
           fi
       - name: Verify redistribution materials
-        run: python3 tests/check_redistribution.py dist
+        run: |
+          python3 tests/check_redistribution.py dist
+          python3 tests/check_release_scope.py dist
+          python3 tests/review_licenses.py dist --output license-selections.json
       - name: Prepare draft for licensing review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ github.ref_name }}
         run: |
           tar -czf moode-10.3.6-renderers-arm64.tar.gz -C dist .
-          gh release create "$VERSION" dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz dist/*/*_debian.tar.xz moode-10.3.6-renderers-arm64.tar.gz --draft --verify-tag --generate-notes --title "$VERSION"
+          sha256sum dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz moode-10.3.6-renderers-arm64.tar.gz license-selections.json | sed 's@dist/[^/]*/@@' > SHA256SUMS
+          gh release create "$VERSION" dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz moode-10.3.6-renderers-arm64.tar.gz license-selections.json SHA256SUMS --draft --verify-tag --notes-file docs/release-notes.md --title "$VERSION"

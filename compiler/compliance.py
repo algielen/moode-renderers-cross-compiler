@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tarfile
@@ -21,7 +22,19 @@ def notice_files(root):
                 yield path
 
 
-def collect(source, package, profile, stage, work, env):
+def inline_notice_files(root):
+    """Preserve whole text files so inline notice/license blocks are never truncated."""
+    marker = re.compile(rb"copyright|spdx-license-identifier|permission is hereby granted|licensed under|all rights reserved", re.I)
+    named = set(notice_files(root))
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path in named or ".git" in path.parts:
+            continue
+        data = path.read_bytes()
+        if b"\0" not in data and marker.search(data):
+            yield path
+
+
+def collect(source, package, profile, stage, work, env, artifacts=None):
     """Archive pristine pinned sources and the entire locked Cargo dependency closure."""
     root = work / "redistribution"
     root.mkdir()
@@ -50,10 +63,20 @@ def collect(source, package, profile, stage, work, env):
         # Config paths must work after extraction on another machine.
         config = config.replace(str(root / "vendor"), "vendor")
         (root / "cargo-vendor-config.toml").write_text(config)
-        metadata = json.loads(subprocess.check_output(
-            ["cargo", "metadata", "--locked", "--format-version", "1"], cwd=workspace, env=env, text=True))
+        metadata_args = ["cargo", "metadata", "--locked", "--format-version", "1"]
+        if package["features"]:
+            metadata_args += ["--features", ",".join(package["features"])]
+        metadata = json.loads(subprocess.check_output(metadata_args, cwd=workspace, env=env, text=True))
+        built_ids = {artifact["package_id"] for artifact in artifacts or []}
+        if not built_ids:
+            raise ValueError("Cargo build supplied no compiler-artifact evidence")
+        missing = built_ids - {item["id"] for item in metadata["packages"]}
+        if missing:
+            raise ValueError("Cargo metadata omits built packages: " + ", ".join(sorted(missing)))
         for item in metadata["packages"]:
-            inventory.append({key: item.get(key) for key in ("name", "version", "source", "license", "license_file")})
+            inventory.append({**{key: item.get(key) for key in ("id", "name", "version", "source", "license", "license_file")},
+                              "built": item["id"] in built_ids})
+        (root / "build-artifacts.json").write_text(json.dumps(artifacts or [], indent=2) + "\n")
         # Rust's standard library is statically linked too. Retain its source and notices.
         sysroot = Path(subprocess.check_output(["rustc", "--print", "sysroot"], env=env, text=True).strip())
         shutil.copytree(sysroot / "lib/rustlib/src/rust", root / "rust-library")
@@ -75,6 +98,10 @@ def collect(source, package, profile, stage, work, env):
         dest = notices / path.relative_to(root)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, dest)
+    for path in inline_notice_files(root):
+        dest = notices / "inline" / path.relative_to(root)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, dest)
     archive_name = f"{package['name']}_{package['package_version']}_sources.tar.gz"
     instructions = (
         f"Source for {package['name']} {package['package_version']}: {archive_name}\n"
@@ -84,11 +111,16 @@ def collect(source, package, profile, stage, work, env):
         "upstream/ contains the pinned source, vendor/ the locked Rust dependency closure\n"
         "(including host and other-platform dependencies), and build-scripts/ the recipes.\n"
         "Original license terms and notices remain in each source tree; no relicensing is intended.\n"
+        "For Cargo packages, MPL-covered files remain under the MPL; their exact source and license texts are retained in vendor/.\n"
         "For an offline Cargo build copy cargo-vendor-config.toml to upstream's workspace/.cargo/config.toml\n"
         "and adjust directory to the extracted vendor directory. Use the target and features in recipe.json.\n"
         "See build-scripts/Dockerfile for system dependencies and toolchains.\n"
         "dependencies.json is a conservative locked dependency inventory, not an exact linked-code SBOM.\n"
+        "For Cargo packages, built=true and build-artifacts.json identify packages reported by the actual build,\n"
+        "including host tools. Inline notices retain complete original text files under notices/inline/.\n"
     )
+    if package["build_system"] == "shairport":
+        instructions += f"Also obtain {package['name']}_{package['package_version']}_debian.tar.xz from the same release for the exact Debian packaging input.\n"
     (root / "SOURCE.txt").write_text(instructions)
     (notices / "SOURCE.txt").write_text(instructions)
     with tarfile.open(stage / archive_name, "w:gz") as archive:

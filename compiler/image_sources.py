@@ -140,6 +140,21 @@ def cargo_sources(output, name, version, url):
     (directory / "version.txt").write_text(version + "\n")
 
 
+def component_notices(output):
+    from compliance import inline_notice_files, notice_files
+
+    for name in ("cargo-deb", "rustup"):
+        source = output / name
+        for path in notice_files(source):
+            destination = output / "notices" / path.relative_to(output)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, destination)
+        for path in inline_notice_files(source):
+            destination = output / "notices/inline" / path.relative_to(output)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, destination)
+
+
 def collect(output, resume=False):
     output = output.resolve()
     if (output / "SOURCE-MANIFEST.json").exists():
@@ -184,6 +199,7 @@ def collect(output, resume=False):
         raise ValueError("Rustup source tag does not match the installed binary commit")
     cargo_sources(output, "rustup", rustup, f"https://github.com/rust-lang/rustup/archive/{commit}.tar.gz")
     (output / "rustup/commit.txt").write_text(commit + "\n")
+    component_notices(output)
     (output / "SOURCE.txt").write_text(
         "Compiler image source supplement. Debian directories contain exact source package inputs,\n"
         "including Built-Using and Static-Built-Using declarations. Retain all original notices.\n"

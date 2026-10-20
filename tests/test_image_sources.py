@@ -3,6 +3,7 @@ import hashlib
 import io
 from pathlib import Path
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -12,6 +13,23 @@ spec.loader.exec_module(image_sources)
 
 
 class ImageSourceTests(unittest.TestCase):
+    def test_component_notices_include_dependency_headers_and_license_text(self):
+        compliance_spec = importlib.util.spec_from_file_location("compliance", Path(__file__).resolve().parent.parent / "compiler/compliance.py")
+        compliance = importlib.util.module_from_spec(compliance_spec)
+        compliance_spec.loader.exec_module(compliance)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dependency = root / "cargo-deb/vendor/example"
+            dependency.mkdir(parents=True)
+            (root / "rustup").mkdir()
+            (dependency / "LICENSE").write_text("Full license text")
+            original = "/* Copyright example\nPermission is hereby granted ... */\nint value;\n"
+            (dependency / "native.c").write_text(original)
+            with patch.dict(sys.modules, {"compliance": compliance}):
+                image_sources.component_notices(root)
+            self.assertEqual((root / "notices/cargo-deb/vendor/example/LICENSE").read_text(), "Full license text")
+            self.assertEqual((root / "notices/inline/cargo-deb/vendor/example/native.c").read_text(), original)
+
     def test_completed_materials_are_preserved(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

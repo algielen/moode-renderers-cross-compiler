@@ -50,6 +50,8 @@ RUN rustup set auto-self-update disable \
     && rustup toolchain install 1.94.0 --profile minimal --target aarch64-unknown-linux-gnu
 
 COPY compiler /opt/compiler
+COPY LICENSE /opt/compiler/LICENSE
+COPY docs/licensing.md /opt/compiler/THIRD-PARTY.md
 COPY profiles /opt/profiles
 COPY tests /opt/tests
 RUN mkdir -p /cache /out \

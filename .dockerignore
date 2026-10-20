@@ -1,9 +1,11 @@
 **
 !Dockerfile
+!LICENSE
+!docs/
+!docs/licensing.md
 !compiler/
 !compiler/**
 !profiles/
 !profiles/**
 !tests/
 !tests/**
-

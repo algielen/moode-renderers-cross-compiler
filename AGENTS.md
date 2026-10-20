@@ -8,6 +8,7 @@ Build moOde's on-demand renderer packages on an AMD64 workstation for a Raspberr
 - Compile with native AMD64 tools targeting AArch64. Use QEMU for runtime checks only. Preserve baseline ARM64 compatibility; do not use `-march=native` or host-specific Rust CPU tuning.
 - Keep `.env`, credentials, build outputs, caches and IDE files out of commits and the Docker build context. Mount only the directories needed by a tool.
 - Preserve unrelated user changes. Do not prune unrelated images, containers or volumes.
+- Original repository code is MIT; third-party artifacts retain their own licenses. Read `docs/licensing.md` before publishing: v0.1.1 still needs corresponding-source and dependency-notice remediation. Do not claim license clearance from top-level renderer licenses alone.
 - Physical Pi checks are read-only unless the user explicitly requests installation: informational flags and temporary uploads only, with cleanup. Do not install packages, change settings or start/restart renderers for routine validation.
 
 ## Where things live

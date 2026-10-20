@@ -6,13 +6,13 @@ Cross-compile **Spotify Connect, AirPlay, and Qobuz Connect** for moOde on **Tri
 
 ## Build a renderer
 
-After the first release is published:
+Use the published compiler image:
 
 ```bash
 mkdir -p dist
 docker run --rm \
   -v "$PWD/dist:/out" \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v1 \
+  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
   build --pi-model 3b+ --moode-version 10.3.6
 ```
 
@@ -22,7 +22,7 @@ PowerShell with `wslc` (substitute `docker` if preferred):
 New-Item -ItemType Directory -Force dist | Out-Null
 wslc run --rm `
   -v "${PWD}/dist:/out" `
-  ghcr.io/algielen/moode-renderers-cross-compiler:v1 `
+  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 `
   build --pi-model 3b+ --moode-version 10.3.6
 ```
 
@@ -41,7 +41,7 @@ For example, build AirPlay into a separate output directory:
 ```bash
 mkdir -p dist-airplay
 docker run --rm -v "$PWD/dist-airplay:/out" -v moode-build-cache:/cache \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v1 \
+  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
   build --renderer airplay --pi-model 3b+ --moode-version 10.3.6
 ```
 
@@ -61,7 +61,7 @@ For faster rebuilds, add a persistent cache:
 
 ```bash
 docker run --rm -v "$PWD/dist:/out" -v moode-build-cache:/cache \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v1 \
+  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
   build --pi-model 3b+ --moode-version 10.3.6 --jobs 4
 ```
 
@@ -110,7 +110,7 @@ Copy `.env.example` to `.env` and set the four `RASPBERRY_*` values. Keep this f
 
 ```bash
 docker run --rm --env-file .env -v moode-ssh:/cache \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v1 \
+  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
   inspect-pi --accept-new-host-key --pi-model 3b+ --moode-version 10.3.6
 ```
 
@@ -120,7 +120,7 @@ To check your compiled executable, also mount `dist` read-only and add `--binary
 
 ```bash
 docker run --rm --env-file .env -v moode-ssh:/cache -v "$PWD/dist:/artifacts:ro" \
-  ghcr.io/algielen/moode-renderers-cross-compiler:v1 \
+  ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 \
   inspect-pi --pi-model 3b+ --moode-version 10.3.6 --binary /artifacts/librespot
 ```
 
@@ -131,7 +131,7 @@ Inspection reads system information. Binary checking uploads to a temporary dire
 ## Supported targets and validation
 
 ```bash
-docker run --rm ghcr.io/algielen/moode-renderers-cross-compiler:v1 list-profiles
+docker run --rm ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1 list-profiles
 ```
 
 Profiles use generic ARM64 instructions and accept Pi `3b`, `3b+`, `3a+`, `4b`, `400`, `5`, `500`, `zero2w`, `cm3`, `cm3+`, `cm4`, and `cm5`, **running the specified 64-bit moOde image**. Model selection checks compatibility; it does not tune the binary for that CPU. ARM32 and releases outside the profile list are unsupported.
@@ -166,7 +166,7 @@ docker run --rm --entrypoint python3 moode-cross:local -m unittest discover -s /
 
 Pull requests and branch pushes build every supported release/renderer combination, check cache reuse, and install each distinct package bundle inside a disposable ARM64 Trixie container. QEMU is used only for runtime tests; compilation uses native AMD64 tools.
 
-Push a tag such as `v1.0.0` to run the release workflow. Once checks pass, it publishes `ghcr.io/algielen/moode-renderers-cross-compiler:v1.0.0`, `:v1`, and `:latest`. The GitHub release includes the four `.deb` files for moOde 10.3.6 and a bundle with separate renderer folders containing binaries, manifests, logs, and checksums. Build historical versions using the matching profile.
+Push a tag such as `v1.0.0` to run the release workflow. Once checks pass, it publishes `ghcr.io/algielen/moode-renderers-cross-compiler:v0.1.1.0.0`, `:v1`, and `:latest`. The GitHub release includes the four `.deb` files for moOde 10.3.6 and a bundle with separate renderer folders containing binaries, manifests, logs, and checksums. Build historical versions using the matching profile.
 
 The repository must permit GitHub Actions to publish packages and releases. After the first publication, set the GHCR package visibility to **Public** in its package settings. Exact release tags or image digests give stable references; `v1` and `latest` move with releases.
 

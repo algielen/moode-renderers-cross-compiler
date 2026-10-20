@@ -2,7 +2,7 @@
 
 Build a moOde renderer on your PC, then copy its Debian package to your Raspberry Pi. The Pi does no compilation.
 
-The first profile supports **librespot (Spotify Connect), moOde 10.3.6 / r1036, Trixie ARM64**. The compiler runs on an AMD64 Linux container host, including Windows with Docker Desktop or WSL's `wslc`. Plain WSL needs a container engine; WSL alone is insufficient. No host Rust or Python installation is needed.
+Supports **librespot (Spotify Connect), moOde 10.2.0–10.3.6, Trixie ARM64**. The compiler runs on an AMD64 Linux container host, including Windows with Docker Desktop or WSL's `wslc`. Plain WSL needs a container engine; WSL alone is insufficient. No host Rust or Python installation is needed.
 
 ## Build a renderer
 
@@ -26,7 +26,7 @@ wslc run --rm `
   build --pi-model 3b+ --moode-version 10.3.6
 ```
 
-`r1036` is an alias for `10.3.6`. These inputs select the architecture, source commit, dependencies, and package version; they do not build the latest upstream release. Unsupported releases and models fail before compilation.
+Set `--moode-version` to your installed release. Release tags such as `r1020`, `r1020fix`, and `r1036` are also accepted. These inputs select the architecture, source commit, dependencies, and package version; they do not build the latest upstream release. See the [release profiles](docs/profiles.md) for the full list. Unsupported releases and models fail before compilation.
 
 Output in `dist/`:
 
@@ -66,7 +66,7 @@ sudo moodeutl --installpkg spotify
 
 Enable Spotify Connect in moOde's Renderer Config. Installation may need Internet access for runtime libraries and may affect active playback. No build tools are installed on the Pi. Spotify playback requires a Premium account.
 
-The filename and package version must match the Pi's renderer database. This profile is based on [moOde r1036](https://github.com/moode-player/moode/blob/r1036/var/local/www/db/moode-sqlite3.db.sql) and its [librespot build recipe](https://github.com/moode-player/pkgbuild/blob/master/packages/librespot/build.sh). A custom upstream version is outside this release's supported interface.
+The filename and package version must match the Pi's renderer database. All supported releases specify librespot `0.8.0-1moode1`; each profile pins its moOde release commit. See the [profile audit](docs/profiles.md) and moOde's [librespot build recipe](https://github.com/moode-player/pkgbuild/blob/master/packages/librespot/build.sh). Custom upstream versions are outside the supported interface.
 
 ## Check compatibility over SSH (optional)
 
@@ -96,7 +96,7 @@ Inspection reads system information. Binary checking uploads to a temporary dire
 docker run --rm ghcr.io/algielen/moode-renderers-cross-compiler:v1 list-profiles
 ```
 
-The profile uses generic ARM64 instructions and accepts Pi `3b`, `3b+`, `3a+`, `4b`, `400`, `5`, `500`, `zero2w`, `cm3`, `cm3+`, `cm4`, and `cm5`, **running the specified 64-bit moOde image**. Model selection checks compatibility; it does not tune the binary for that CPU. ARM32 and other moOde releases are unsupported.
+Profiles use generic ARM64 instructions and accept Pi `3b`, `3b+`, `3a+`, `4b`, `400`, `5`, `500`, `zero2w`, `cm3`, `cm3+`, `cm4`, and `cm5`, **running the specified 64-bit moOde image**. Model selection checks compatibility; it does not tune the binary for that CPU. ARM32 and releases outside the profile list are unsupported.
 
 Hardware validation status is recorded in [docs/validation.md](docs/validation.md). CLI execution confirms loading and supported options; it does not establish Spotify discovery or successful audio playback.
 
@@ -122,8 +122,8 @@ Run the CLI tests inside the compiler:
 docker run --rm --entrypoint python3 moode-cross:local -m unittest discover -s /opt/tests -v
 ```
 
-Pull requests and branch pushes build the compiler and renderer, check cache reuse, and install the package inside a disposable ARM64 Trixie container. QEMU is used only for runtime tests; compilation uses the native AMD64 toolchain.
+Pull requests and branch pushes build every supported release profile, check cache reuse, and install the default package inside a disposable ARM64 Trixie container. QEMU is used only for runtime tests; compilation uses the native AMD64 toolchain.
 
 Push a tag such as `v1.0.0` to run the release workflow. Once checks pass, it publishes `ghcr.io/algielen/moode-renderers-cross-compiler:v1.0.0`, `:v1`, and `:latest`, and creates a GitHub release containing the renderer artifacts. The repository must permit GitHub Actions to publish packages and releases. After the first publication, set the GHCR package visibility to **Public** in its package settings. Exact release tags or image digests give stable references; `v1` and `latest` move with releases.
 
-AirPlay, Qobuz, older releases, and custom source overrides are deferred. Add future renderers as separate recipes and compatibility profiles.
+AirPlay, Qobuz, releases before 10.2.0, and custom source overrides are deferred. Add future renderers as separate recipes and compatibility profiles.

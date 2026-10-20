@@ -15,6 +15,24 @@ spec.loader.exec_module(cli)
 
 
 class ProfileTests(unittest.TestCase):
+    def test_all_releases_since_on_device_build_introduction(self):
+        expected = {f"10.2.{patch}" for patch in range(5)} | {f"10.3.{patch}" for patch in range(7)}
+        all_profiles = cli.profiles()
+        self.assertEqual({p["moode_version"] for p in all_profiles}, expected)
+        seen = set()
+        for profile in all_profiles:
+            for name in [profile["moode_version"], *profile["aliases"]]:
+                with self.subTest(release=name):
+                    self.assertNotIn(name, seen)
+                    seen.add(name)
+                    self.assertEqual(cli.select_profile(name, "3b+"), profile)
+            self.assertRegex(profile["moode_commit"], r"^[0-9a-f]{40}$")
+            if profile["moode_version"] != "10.3.6":
+                self.assertEqual(profile["validated_models"], [])
+
+    def test_corrected_1020_image_uses_the_same_renderer_profile(self):
+        self.assertEqual(cli.select_profile("r1020fix", "3b+"), cli.select_profile("r1020", "3b+"))
+
     def test_alias_selects_exact_moode_package(self):
         profile = cli.select_profile("r1036", "3b+")
         self.assertEqual(profile, cli.select_profile("10.3.6", "3b+"))

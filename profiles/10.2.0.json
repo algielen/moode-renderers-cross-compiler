@@ -1,0 +1,34 @@
+{
+  "moode_version": "10.2.0",
+  "aliases": [
+    "r1020",
+    "r1020fix"
+  ],
+  "moode_commit": "d922c0204c6e1b9d255d3d3a100000ce10e73d98",
+  "distribution": "trixie",
+  "architecture": "arm64",
+  "target": "aarch64-unknown-linux-gnu",
+  "models": [
+    "3b",
+    "3b+",
+    "3a+",
+    "4b",
+    "400",
+    "5",
+    "500",
+    "zero2w",
+    "cm3",
+    "cm3+",
+    "cm4",
+    "cm5"
+  ],
+  "validated_models": [],
+  "renderer": "librespot",
+  "source_url": "https://github.com/librespot-org/librespot.git",
+  "source_tag": "v0.8.0",
+  "source_commit": "d36f9f1907e8cc9d68a93f8ebc6b627b1bf7267d",
+  "package_version": "0.8.0-1moode1",
+  "features": [
+    "alsa-backend"
+  ]
+}

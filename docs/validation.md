@@ -7,7 +7,8 @@ Validated locally on 2026-10-20 using Windows PowerShell and `wslc` 3.0.3.0:
 - Compiler image built from its pinned base and Debian snapshot.
 - Clean librespot cross-build completed with four jobs; Cargo reported 1 minute 37 seconds.
 - Cached build completed without recompiling crates; Cargo reported 0.17 seconds.
-- Six CLI/profile/failure-handling tests passed, and a read-only output mount failed before compilation.
+- Eight CLI/profile/failure-handling tests passed, and a read-only output mount failed before compilation.
+- All 12 profiles (10.2.0–10.3.6) cross-built using `wslc`; each manifest and checksum set passed, and equivalent recipes exported identical binaries. Every release/tag alias, including `r1020fix`, resolved to its intended profile.
 - AArch64 ELF, dynamic loader, Debian architecture/version, package assets, runtime dependencies, and artifact checksums inspected.
 - Package installed in a disposable AMD64 Trixie container with ARM64 libraries. The installed binary's `--version` and `--help` ran through user-mode QEMU.
 - SSH inspection confirmed the physical Pi's model, OS, release, and expected renderer package version.

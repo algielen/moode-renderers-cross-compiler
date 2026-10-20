@@ -50,6 +50,11 @@ jobs:
             echo 'Cargo did not reuse the compiled cache'; exit 1
           fi
           cd dist && sha256sum -c SHA256SUMS
+      - name: Build every supported release profile
+        run: |
+          mkdir -p profile-dist
+          docker run --rm -v "$PWD/profile-dist:/out" -v moode-build-cache:/cache \
+            --entrypoint python3 moode-cross:test /opt/tests/build_profiles.py
       - name: Install and check in clean ARM64 Trixie
         run: |
           docker build -f tests/Dockerfile.runtime -t moode-cross:runtime .

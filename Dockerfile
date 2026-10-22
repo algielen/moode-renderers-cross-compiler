@@ -1,3 +1,11 @@
+# Fetch the security-fixed CA package independently of the historical compiler snapshot.
+FROM debian:trixie-slim AS certificates
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" ge 20250419+deb13u1 \
+    && cd /tmp && apt-get download ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Host tools run on AMD64; only the renderer is compiled for ARM64.
 FROM rust:1.90.0-slim-trixie@sha256:7fa728f3678acf5980d5db70960cf8491aff9411976789086676bdf0c19db39e
 
@@ -17,6 +25,12 @@ ENV DEBIAN_SNAPSHOT=20261010T000000Z \
     RUSTUP_TOOLCHAIN=1.90.0 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
+
+COPY --from=certificates /tmp/ca-certificates_*.deb /tmp/
+RUN dpkg -i /tmp/ca-certificates_*.deb \
+    && rm /tmp/ca-certificates_*.deb \
+    && rustup self update \
+    && test "$(rustup --version | cut -d ' ' -f 2)" = 1.29.2
 
 RUN test "$(dpkg --print-architecture)" = amd64 \
     && dpkg --add-architecture arm64 \

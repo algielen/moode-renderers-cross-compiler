@@ -122,7 +122,8 @@ matches the full pinned package recipe, target, distribution and architecture;
 the reviewed Dockerfile, recipes, collector and license-policy inputs must still
 match. It is not inferred from package names, version labels or top-level licenses.
 Librespot is enabled and recorded as published in v0.1.2. The owner approved the
-reviewed pibuz 2.5.1 recipe for publication on 2026-10-26. AirPlay and historical qbzd have no
+reviewed pibuz 2.5.1 recipe for publication on 2026-10-26; it is recorded as published
+in v0.1.3 after uploaded-asset verification. AirPlay and historical qbzd have no
 clearance entry. Unknown or changed recipes remain blocked.
 
 Already-published recipes are reused across matching moOde profiles. A new recipe

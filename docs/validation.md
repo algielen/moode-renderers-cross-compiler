@@ -123,8 +123,15 @@ v0.1.2 assets and CI approval. Tests cover published-recipe reuse, first matchin
 profile selection, pending/unknown clearance, changed features/source/toolchains,
 stale review inputs, empty release plans and a Qobuz-only aggregate proof. No
 renderer implementation or recipe changed; no new target artifacts were built
-for this selector change. Full post-change compatibility validation remains
-outstanding and is distinct from release-package selection.
+for this selector change. Full post-change compatibility validation subsequently
+passed in [run 40329433504](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/40329433504).
+
+The pibuz-only [v0.1.3 release run](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/40344220862)
+passed 70 unit tests, the 10.3.5 build, clean ARM64 runtime checks, offline source
+verification and aggregate approval. Before publication, all six downloaded assets
+passed exact inventory/checksum checks; the combined bundle matched CI-approved
+file hashes, the pinned pibuz commit and the regenerated license-selection report.
+The same recipe covers 10.3.6. Its publication receipt prevents redundant rebuilds.
 
 ## Original CI validation
 

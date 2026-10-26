@@ -9,9 +9,9 @@
 
 ## Next steps
 
-1. Review the local release-selection changes before committing/pushing. Only new, cleared recipes may produce release artifacts; normal compatibility validation stays separate.
+1. Release-selection changes are committed and pushed. Only new, cleared recipes may produce release artifacts; normal compatibility validation stays separate.
 2. **Do not release 10.2.1 separately:** librespot is identical through 10.3.6 and reuses v0.1.2.
-3. Resolve owner confirmation for the reviewed pibuz recipe in `compiler/release-policy.json`. If enabled, its next candidate is **10.3.5**, also matching 10.3.6. AirPlay and historical qbzd remain blocked.
+3. The owner approved the reviewed pibuz recipe on 2026-10-26. Its next candidate is **10.3.5**, also matching 10.3.6. AirPlay and historical qbzd remain blocked.
 4. When a new candidate exists, create a new tag and run `build.yml` with `profile=10.3.5`, `profile_only=true`, `full=false`. Require every selected-package check to pass and review exact assets before publishing.
 5. After publication, record the exact recipe/release receipt in the policy to prevent duplicate future builds. Never infer clearance for a changed source, feature set or toolchain.
 

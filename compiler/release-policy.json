@@ -32,7 +32,7 @@
       "evidence": "v0.1.2 published after source, notice and dependency review"
     },
     {
-      "status": "reviewed_pending_owner",
+      "status": "cleared",
       "recipe": {
         "target": "aarch64-unknown-linux-gnu",
         "distribution": "trixie",
@@ -52,7 +52,7 @@
         }
       },
       "review": "docs/licensing.md",
-      "evidence": "Review complete; publication scope confirmation pending"
+      "evidence": "Source, notice and dependency review complete; owner approved publication on 2026-10-26"
     }
   ],
   "published": [

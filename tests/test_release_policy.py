@@ -43,6 +43,15 @@ class ReleasePolicyTests(unittest.TestCase):
         self.assertIn("airplay", policy.plan("10.2.0", self.profiles, self.policy)["blocked"])
         self.assertIn("qobuz", policy.plan("10.3.4", self.profiles, self.policy)["blocked"])
 
+    def test_committed_policy_selects_only_approved_pibuz_delta(self):
+        for version in ("10.3.5", "10.3.6"):
+            result = policy.plan(version, self.profiles)
+            self.assertEqual(result["matrix"]["include"], [{"renderer": "qobuz", "versions": ["10.3.5"],
+                                                           "compatible_profiles": ["10.3.5", "10.3.6"]}])
+            self.assertEqual(result["reused"][0]["release"], "v0.1.2")
+            self.assertIn("airplay", result["blocked"])
+        self.assertIn("qobuz", policy.plan("10.3.4", self.profiles)["blocked"])
+
     def test_release_aggregate_requires_only_the_new_cleared_renderer(self):
         import ci_verification as verification
         profile = self.profiles["10.3.5"]

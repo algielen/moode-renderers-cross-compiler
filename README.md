@@ -199,7 +199,7 @@ build, upload or draft; the workflow summary shows reuse and blocked packages.
 Do not combine release selection with **Verify every profile**.
 
 Currently librespot reuses v0.1.2. Pibuz first appears in 10.3.5 and matches 10.3.6;
-its reviewed recipe remains disabled pending owner confirmation. Historical qbzd
+its reviewed recipe is enabled for publication with owner approval. Historical qbzd
 and AirPlay remain blocked. Do not clear a new recipe from its top-level license
 alone. After publishing a reviewed recipe, record its receipt in the policy.
 Policy-only receipt/clearance edits run lightweight checks without rebuilding the

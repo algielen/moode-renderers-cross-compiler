@@ -33,6 +33,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_docs_and_deleted_profiles_skip_builds(self):
         self.assertFalse(planner.select(["AGENTS.md", "docs/validation.md"], self.versions)["build"])
+        self.assertFalse(planner.select(["compiler/release-policy.json"], self.versions)["build"])
         self.assertFalse(planner.select(["profiles/10.2.0.json"], self.versions)["build"])
 
     def test_shared_changes_and_manual_full_verify_everything(self):

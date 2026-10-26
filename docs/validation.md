@@ -115,6 +115,17 @@ downloads were published in v0.1.2. Downloaded release assets also matched the
 approval, source pin and regenerated license report before publication. This
 single-profile run is not a full-matrix performance or compatibility measurement.
 
+## Release-selection validation
+
+The subsequent release-selection change passed 69 unit tests, Python syntax
+validation and workflow lint. It was also checked against the actual downloaded
+v0.1.2 assets and CI approval. Tests cover published-recipe reuse, first matching
+profile selection, pending/unknown clearance, changed features/source/toolchains,
+stale review inputs, empty release plans and a Qobuz-only aggregate proof. No
+renderer implementation or recipe changed; no new target artifacts were built
+for this selector change. Full post-change compatibility validation remains
+outstanding and is distinct from release-package selection.
+
 ## Original CI validation
 
 The [v0.1.1 verification job](https://github.com/algielen/moode-renderers-cross-compiler/actions/runs/39461501856) passed on 2026-10-20: CLI/failure tests, cache reuse, all 27 profile/renderer builds, and installation plus informational CLI execution of every distinct bundle in clean ARM64 Debian Trixie. QEMU/binfmt was used for these runtime checks. That particular runtime test could not run locally because this `wslc` host lacks ARM binfmt emulation. The minimal runtime image explicitly points apt at its bootstrapped CA bundle for verified HTTPS access to Debian Snapshot.

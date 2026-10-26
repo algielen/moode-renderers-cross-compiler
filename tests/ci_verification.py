@@ -92,10 +92,15 @@ def aggregate(reports, versions, commit, available, release=False, release_profi
     expected_shards = {s["renderer"]: s["versions"] for s in shards}
     expected_pairs = {(v, s["renderer"]) for s in shards for v in s["versions"]}
     if release:
-        required = {(release_profile, renderer) for renderer in ("librespot", "qobuz")
-                    if renderer in available.get(release_profile, {}).get("renderers", {})}
-        if not required or not required <= expected_pairs:
+        from release_policy import plan
+        if release_profile not in available:
             raise ValueError("Missing default release coverage")
+        selection = plan(release_profile, available)
+        shards = selection["matrix"]["include"]
+        if not shards or sorted({v for s in shards for v in s["versions"]}) != sorted(versions):
+            raise ValueError("Missing default release coverage")
+        expected_shards = {s["renderer"]: s["versions"] for s in shards}
+        expected_pairs = {(v, s["renderer"]) for s in shards for v in s["versions"]}
     seen_renderers, seen_pairs, binaries, builds = set(), set(), {}, []
     for item in reports:
         renderer = item["renderer"]
@@ -144,6 +149,12 @@ def bind(root, approval, commit, release_profile="10.2.0"):
         raise ValueError("Wrong approval commit or schema")
     check(root)
     check_scope(root, release_profile)
+    from release_policy import cleared, profiles_for_policy
+    available = profiles_for_policy()
+    expected = {b["renderer"] for b in approval["builds"] if b["version"] == release_profile
+                and cleared(available[release_profile], b["renderer"])}
+    if {p.name for p in Path(root).iterdir()} != expected:
+        raise ValueError("Missing or unexpected approved release downloads")
     for directory in Path(root).iterdir():
         renderer = directory.name
         matching = [b for b in approval["builds"] if (b["version"], b["renderer"]) == (release_profile, renderer)]

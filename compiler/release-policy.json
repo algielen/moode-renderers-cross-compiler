@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "reviewed_build_inputs": {
+    "Dockerfile": "4a2645472eb766e64bcfcf208a1b3b94e0560245addfa4c2f8a4eb5234c58ccb",
+    "compiler/recipes.py": "2ef4e23f777438677c7ee5ed334ba6d87b38d59a0076953b68ca6425c14f613f",
+    "compiler/compliance.py": "30281b53b4430b13454a16a7ebe80e89dbd10a288a94cec333a5cc76629a3150",
+    "compiler/license_policy.py": "d91d680449315d49ce879a93a9acdac010f3bf5c8121d3a2382f079f65d7d780"
+  },
+  "approvals": [
+    {
+      "status": "cleared",
+      "recipe": {
+        "target": "aarch64-unknown-linux-gnu",
+        "distribution": "trixie",
+        "architecture": "arm64",
+        "package": {
+          "name": "librespot",
+          "package_version": "0.8.0-1moode1",
+          "source_url": "https://github.com/librespot-org/librespot.git",
+          "source_tag": "v0.8.0",
+          "source_commit": "d36f9f1907e8cc9d68a93f8ebc6b627b1bf7267d",
+          "build_system": "cargo-deb",
+          "db_type": "spotify-connect",
+          "cargo_package": "librespot",
+          "workspace": ".",
+          "features": [
+            "alsa-backend"
+          ]
+        }
+      },
+      "review": "docs/licensing.md",
+      "evidence": "v0.1.2 published after source, notice and dependency review"
+    },
+    {
+      "status": "reviewed_pending_owner",
+      "recipe": {
+        "target": "aarch64-unknown-linux-gnu",
+        "distribution": "trixie",
+        "architecture": "arm64",
+        "package": {
+          "name": "pibuz",
+          "package_version": "2.5.1-1moode1",
+          "source_url": "https://github.com/PhilipVinc/pibuz.git",
+          "source_tag": "v2.5.1",
+          "source_commit": "465e21b2006718dc31999bda54fe5b60948acc9d",
+          "build_system": "cargo",
+          "db_type": "qobuz-connect",
+          "cargo_package": "pibuz",
+          "workspace": ".",
+          "features": [],
+          "rust_toolchain": "1.94.0"
+        }
+      },
+      "review": "docs/licensing.md",
+      "evidence": "Review complete; publication scope confirmation pending"
+    }
+  ],
+  "published": [
+    {
+      "recipe": {
+        "target": "aarch64-unknown-linux-gnu",
+        "distribution": "trixie",
+        "architecture": "arm64",
+        "package": {
+          "name": "librespot",
+          "package_version": "0.8.0-1moode1",
+          "source_url": "https://github.com/librespot-org/librespot.git",
+          "source_tag": "v0.8.0",
+          "source_commit": "d36f9f1907e8cc9d68a93f8ebc6b627b1bf7267d",
+          "build_system": "cargo-deb",
+          "db_type": "spotify-connect",
+          "cargo_package": "librespot",
+          "workspace": ".",
+          "features": [
+            "alsa-backend"
+          ]
+        }
+      },
+      "release": "v0.1.2",
+      "profile": "10.2.0"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 from ci_verification import matrix
+from release_policy import plan as release_plan
 
 
 def git(*args):
@@ -31,7 +32,8 @@ def select(paths, available, full=False, release=False, profile_only=False, rele
     if profile_only:
         return {"versions": [release_profile], "build": True, "full": False}
     shared = any(p == "Dockerfile" or p == ".dockerignore"
-                 or p.startswith("compiler/") or p.startswith(".github/workflows/")
+                 or (p.startswith("compiler/") and p != "compiler/release-policy.json")
+                 or p.startswith(".github/workflows/")
                  or (p.startswith("tests/") and p != "tests/test_cli.py") for p in paths)
     full = full or shared
     versions = set(available) if full else {
@@ -64,13 +66,24 @@ def main():
     base = baseline(event, args.event_name, args.head)
     paths = git("diff", "--name-only", base, args.head).splitlines() if base else []
     available = [p.stem for p in Path("profiles").glob("*.json")]
+    release = event.get("ref", os.environ.get("GITHUB_REF", "")).startswith("refs/tags/v")
+    if release and args.full:
+        parser.error("Run full compatibility verification on a branch; releases build only new cleared packages")
     plan = select(paths, available, full=args.full or base is None,
-                  release=event.get("ref", os.environ.get("GITHUB_REF", "")).startswith("refs/tags/v"),
+                  release=release,
                   profile_only=args.profile_only, release_profile=args.release_profile)
     plan["profile_only"] = args.profile_only
     plan["release_profile"] = args.release_profile
     plan["matrix"] = matrix(plan["versions"], {
         p.stem: json.loads(p.read_text()) for p in Path("profiles").glob("*.json")})
+    plan["release_artifacts"] = release or args.profile_only
+    if plan["release_artifacts"]:
+        packages = release_plan(args.release_profile, {
+            p.stem: json.loads(p.read_text()) for p in Path("profiles").glob("*.json")})
+        plan.update(matrix=packages["matrix"], release_profile=packages["profile"],
+                    versions=sorted({v for s in packages["matrix"]["include"] for v in s["versions"]}),
+                    build=bool(packages["matrix"]["include"]), full=False,
+                    reused=packages["reused"], blocked=packages["blocked"], queued=packages["queued"])
     print(json.dumps({"base": base, **plan}), flush=True)
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as output:

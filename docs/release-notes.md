@@ -2,6 +2,8 @@ Renderer downloads for **moOde @MOODE_PROFILE@, Trixie ARM64**:
 
 @PACKAGES@
 
+@REUSED_PACKAGES@
+
 Download the `.deb` for the renderer you need. The combined archive also includes
 standalone executables, build manifests, logs and per-renderer checksums.
 

@@ -9,8 +9,9 @@ Cross-compile **Spotify Connect, AirPlay, and Qobuz Connect** for moOde on **Tri
 Repository code uses the [MIT license](LICENSE). Renderer binaries and the compiler image retain third-party licenses. The [release license audit](docs/licensing.md) identifies outstanding source and notice requirements for v0.1.1; it is not yet cleared as a complete compliant distribution.
 
 The first corrected release, [v0.1.2](https://github.com/algielen/moode-renderers-cross-compiler/releases/tag/v0.1.2), provides **Spotify for moOde 10.2.0**, with
-matching source and notice archives. Later releases can advance through the
-profiles starting with 10.2.1. AirPlay downloads are deferred for licensing
+matching source and notice archives. Its librespot recipe is identical across
+10.2.0–10.3.6, so those profiles reuse the same download. New release artifacts
+are produced only for unpublished, explicitly cleared recipes. AirPlay downloads are deferred for licensing
 clarification. The local compiler continues to support all listed profiles.
 
 Build the compiler locally from this checkout while public image remediation is pending:
@@ -187,14 +188,22 @@ cache, runtime checks and offline source checks. A final job verifies complete
 coverage and binary agreement for equivalent recipes. Release downloads must
 match its approved file hashes; AirPlay remains outside the publication allowlist.
 
-Pull requests compare with their merge base; branch pushes compare with the previous commit from the push event. Release tags and manual runs compare with the preceding release tag. Without a baseline, CI checks all profiles. Releases also build their selected download profile (initially 10.2.0). To force all profiles, run **Build and release → Run workflow → Verify every profile** in GitHub Actions.
+Pull requests compare with their merge base; branch pushes compare with the previous commit from the push event. Normal manual validation compares with the preceding release tag. Without a baseline, validation checks all profiles. To force all compatibility checks, run **Build and release → Run workflow → Verify every profile** against a branch.
 
-For a shorter workflow smoke test, select **Smoke test only the release profile**
-and enter the desired **moOde profile for release downloads** (initially 10.2.0).
-This explicit option overrides full-matrix selection and cannot be combined with
-**Verify every profile**. A run against a release tag exercises draft creation;
-the draft is labelled as limited validation and remains unpublished. Select
-10.2.1 for the next profile release, using a new release tag.
+Release tags and **Select only new, license-cleared release packages** use
+`compiler/release-policy.json`, rather than the compatibility matrix. Selection
+compares full recipes (version, commit, features, build environment, toolchain and
+target/ABI), checks explicit clearance and skips published recipes. A later matching
+profile uses the earliest representative. No new eligible package means no renderer
+build, upload or draft; the workflow summary shows reuse and blocked packages.
+Do not combine release selection with **Verify every profile**.
+
+Currently librespot reuses v0.1.2. Pibuz first appears in 10.3.5 and matches 10.3.6;
+its reviewed recipe remains disabled pending owner confirmation. Historical qbzd
+and AirPlay remain blocked. Do not clear a new recipe from its top-level license
+alone. After publishing a reviewed recipe, record its receipt in the policy.
+Policy-only receipt/clearance edits run lightweight checks without rebuilding the
+compatibility matrix; changes to actual compiler or workflow code still trigger it.
 
 Push a release tag to build and prepare a **draft** GitHub release for licensing review. Each renderer includes companion source and notice archives; notices are also installed under `/usr/share/doc/<name>/redistribution` in its Debian package. The standalone bundle includes these archives, manifests, logs and checksums. Source archives retain pinned upstream sources, locked Cargo dependencies (including other platforms and build dependencies), Rust library sources and build/package scripts. Keep the source and notice archives with binaries when redistributing.
 

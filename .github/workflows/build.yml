@@ -12,7 +12,7 @@ on:
         type: boolean
         default: false
       profile_only:
-        description: Smoke test only the release profile (not full compatibility validation)
+        description: Select only new, license-cleared release packages (skip published recipes)
         type: boolean
         default: false
       profile:
@@ -33,6 +33,7 @@ jobs:
       matrix: ${{ steps.profiles.outputs.matrix }}
       profile_only: ${{ steps.profiles.outputs.profile_only }}
       release_profile: ${{ steps.profiles.outputs.release_profile }}
+      release_artifacts: ${{ steps.profiles.outputs.release_artifacts }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,6 +52,16 @@ jobs:
           if [ "$PROFILE_ONLY" = true ]; then args+=(--profile-only); fi
           args+=(--release-profile "$RELEASE_PROFILE")
           python3 tests/select_profiles.py "${args[@]}"
+      - name: Summarize release package selection
+        if: steps.profiles.outputs.release_artifacts == 'true'
+        env:
+          NEW_PACKAGES: ${{ steps.profiles.outputs.matrix }}
+          REUSED_PACKAGES: ${{ steps.profiles.outputs.reused }}
+          BLOCKED_PACKAGES: ${{ steps.profiles.outputs.blocked }}
+        run: |
+          printf '## Release package selection\n\n' >> "$GITHUB_STEP_SUMMARY"
+          printf 'New builds: %s\n\nReuse existing releases: %s\n\nNot cleared: %s\n' \
+            "$NEW_PACKAGES" "$REUSED_PACKAGES" "$BLOCKED_PACKAGES" >> "$GITHUB_STEP_SUMMARY"
 
   verify:
     needs: plan
@@ -156,11 +167,11 @@ jobs:
         if: needs.plan.outputs.build == 'true'
         env:
           VERSIONS: ${{ needs.plan.outputs.versions }}
-          RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          RELEASE_ARTIFACTS: ${{ needs.plan.outputs.release_artifacts }}
           RELEASE_PROFILE: ${{ needs.plan.outputs.release_profile }}
         run: |
           args=()
-          if [ "$RELEASE" = true ]; then args+=(--release); fi
+          if [ "$RELEASE_ARTIFACTS" = true ]; then args+=(--release); fi
           python3 tests/ci_verification.py aggregate verification --versions-json "$VERSIONS" \
             --commit "$GITHUB_SHA" --release-profile "$RELEASE_PROFILE" --output approval.json "${args[@]}"
       - uses: actions/upload-artifact@v4
@@ -172,7 +183,7 @@ jobs:
           overwrite: true
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && needs.plan.outputs.build == 'true'
     needs: [plan, aggregate]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -220,5 +231,5 @@ jobs:
           sha256sum dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz "$BUNDLE" license-selections.json | sed 's@dist/[^/]*/@@' > SHA256SUMS
           args=()
           if [ "$PROFILE_ONLY" = true ]; then args+=(--limited); fi
-          python3 tests/release_notes.py "$RELEASE_PROFILE" --output release-notes.md "${args[@]}"
+          python3 tests/release_notes.py "$RELEASE_PROFILE" --artifacts dist --output release-notes.md "${args[@]}"
           gh release create "$VERSION" dist/*/*.deb dist/*/*_sources.tar.gz dist/*/*_notices.tar.gz "$BUNDLE" license-selections.json SHA256SUMS --draft --verify-tag --notes-file release-notes.md --title "$VERSION"

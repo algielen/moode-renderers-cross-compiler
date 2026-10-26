@@ -118,7 +118,7 @@ class VerificationTests(unittest.TestCase):
                 if mutation:
                     (root / "qobuz" / ("pibuz" if mutation == "changed" else mutation)).write_bytes(b"unexpected")
                 # Isolate binding from the separate archive-content checker.
-                with patch("check_redistribution.check"):
+                with patch("check_redistribution.check"), patch("check_release_scope.check"), patch("release_policy.cleared", return_value=True):
                     if mutation:
                         with self.assertRaises(ValueError):
                             ci.bind(root, approval, "commit", "10.3.6")
@@ -130,5 +130,5 @@ class VerificationTests(unittest.TestCase):
             root = Path(directory)
             approval = self.release_fixture(root)
             approval["builds"][0]["files"]["librespot"] = "b" * 64
-            with patch("check_redistribution.check"), self.assertRaisesRegex(ValueError, "aggregate-approved"):
+            with patch("check_redistribution.check"), patch("check_release_scope.check"), patch("release_policy.cleared", return_value=True), self.assertRaisesRegex(ValueError, "aggregate-approved"):
                 ci.bind(root, approval, "commit", "10.3.6")

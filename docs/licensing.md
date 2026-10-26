@@ -86,8 +86,9 @@ does not support Apache-2.0/GPLv2 combinations. Changing FFmpeg alone would not
 resolve the header question. A maintainer question is retained locally under
 ignored `dist/airplay-license-question.md` and has **not been sent**.
 
-The owner selected **v0.1.2 for moOde 10.2.0 with Spotify downloads only**, then
-subsequent releases can advance through 10.2.1 and later profiles. Qobuz is absent
+The owner selected **v0.1.2 for moOde 10.2.0 with Spotify downloads only**. Subsequent
+releases are now package-driven: identical recipes reuse existing downloads,
+instead of producing another release for each moOde version. Qobuz is absent
 before 10.3.4. AirPlay publication
 is deferred, its question stays local and unsent, and the compiler remains locally
 built. The workflow allowlist follows the selected profile and excludes AirPlay;
@@ -115,6 +116,21 @@ historical qbzd or the compiler image for publication. Pibuz is reviewed but is
 not part of the first 10.2.0 release.
 
 ### Remediation implemented in the working tree
+
+Release selection is now governed by `compiler/release-policy.json`. Clearance
+matches the full pinned package recipe, target, distribution and architecture;
+the reviewed Dockerfile, recipes, collector and license-policy inputs must still
+match. It is not inferred from package names, version labels or top-level licenses.
+Librespot is enabled and recorded as published in v0.1.2. Pibuz's review is recorded
+but its enablement awaits owner confirmation. AirPlay and historical qbzd have no
+clearance entry. Unknown or changed recipes remain blocked.
+
+Already-published recipes are reused across matching moOde profiles. A new recipe
+is built once at its earliest matching profile, with other matching profiles listed
+in the selection/notes. No eligible new recipe means no build, upload or draft.
+After publishing a verified package, record its exact recipe and release receipt
+in the policy so later runs reuse it. Normal compatibility validation is separate
+and does not confer publication clearance.
 
 New builds collect a source archive and notice archive per package. The source archive
 contains the pristine pinned renderer, the complete locked Cargo vendor closure where

@@ -85,6 +85,8 @@ jobs:
       - name: Build compiler
         uses: docker/build-push-action@v6
         with:
+          pull: true
+          no-cache: true
           context: .
           load: true
           tags: moode-cross:test

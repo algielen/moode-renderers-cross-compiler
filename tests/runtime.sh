@@ -11,5 +11,7 @@ apt-get update --error-on=any
 # Packages must not start audio services inside this test container.
 printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
 chmod +x /usr/sbin/policy-rc.d
-apt-get install -y --no-install-recommends python3 ca-certificates
+apt-get install -y --no-install-recommends python3 /tmp/ca-certificates_*.deb
+dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" ge 20250419+deb13u1
+rm /tmp/ca-certificates_*.deb
 python3 /runtime.py

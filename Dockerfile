@@ -30,7 +30,7 @@ COPY --from=certificates /tmp/ca-certificates_*.deb /tmp/
 RUN dpkg -i /tmp/ca-certificates_*.deb \
     && rm /tmp/ca-certificates_*.deb \
     && rustup self update \
-    && test "$(rustup --version | cut -d ' ' -f 2)" = 1.29.2
+    && test "$(rustup --version | cut -d ' ' -f 2)" = 1.29.3
 
 RUN test "$(dpkg --print-architecture)" = amd64 \
     && dpkg --add-architecture arm64 \

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "reviewed_build_inputs": {
-    "Dockerfile": "c6144f0d991f0dbaf2728165d44eb205dd3e774e7ff310d8ceb89bae597a718f",
+    "Dockerfile": "8a5d2670109448d0c095fefd3793415123d975c10440e0e0dc749df3600c32a9",
     "compiler/recipes.py": "2ef4e23f777438677c7ee5ed334ba6d87b38d59a0076953b68ca6425c14f613f",
     "compiler/compliance.py": "30281b53b4430b13454a16a7ebe80e89dbd10a288a94cec333a5cc76629a3150",
     "compiler/license_policy.py": "d91d680449315d49ce879a93a9acdac010f3bf5c8121d3a2382f079f65d7d780"
